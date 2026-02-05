@@ -1,0 +1,45 @@
+package br.com.busco.viagem.viagem.domain;
+
+import br.com.busco.viagem.sk.ddd.ValueObject;
+import br.com.busco.viagem.viagem.domain.exceptions.RotaSemOrigemDestinoDefinidas;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.data.geo.Distance;
+
+import static java.util.Objects.isNull;
+import static lombok.AccessLevel.PRIVATE;
+import static lombok.AccessLevel.PUBLIC;
+
+@Getter
+@Embeddable
+@EqualsAndHashCode(of = {"origem", "destino"})
+@NoArgsConstructor(access = PUBLIC, force = true)
+@AllArgsConstructor(access = PRIVATE)
+public class Rota implements ValueObject {
+
+    @Embedded
+    @AttributeOverride(name = "valor", column = @Column(name = "origem"))
+    private Origem origem;
+
+    @Embedded
+    @AttributeOverride(name = "valor", column = @Column(name = "destino"))
+    private Destino destino;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "value", column = @Column(name = "distancia")),
+            @AttributeOverride(name = "metric", column = @Column(name = "metrica")),
+    })
+    private Distance distancia;
+
+    public static Rota of(Origem origem, Destino destino, Distance distancia) {
+        if (isNull(origem) || isNull(destino) || isNull(distancia)) {
+            throw new RotaSemOrigemDestinoDefinidas();
+        }
+        return new Rota(origem, destino, distancia);
+    }
+
+}
