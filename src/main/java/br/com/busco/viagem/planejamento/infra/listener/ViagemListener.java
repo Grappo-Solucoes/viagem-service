@@ -45,7 +45,7 @@ public class ViagemListener {
                 .id(UUID.fromString(planejamento.toUUID()))
                 .build();
 
-        if (ultimaViagemPolicy.isUltimaViagemDoPlanejamento(evt.getId())) {
+        if (ultimaViagemPolicy.isUltimaViagemDoPlanejamento(evt.getId(), planejamento)) {
             service.handle(cmd);
         }
     }
