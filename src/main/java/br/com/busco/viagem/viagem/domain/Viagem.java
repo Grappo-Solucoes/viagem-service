@@ -2,15 +2,16 @@ package br.com.busco.viagem.viagem.domain;
 
 import br.com.busco.viagem.sk.ddd.AbstractAggregateRoot;
 import br.com.busco.viagem.sk.ids.*;
+import br.com.busco.viagem.sk.vo.Codigo;
+import br.com.busco.viagem.sk.vo.Rota;
 import br.com.busco.viagem.viagem.domain.events.*;
+import br.com.busco.viagem.viagem.domain.exceptions.NaoPossivelIniciarViagemQueNaoSejaPendente;
+import br.com.busco.viagem.viagem.domain.exceptions.ViagemIncompleta;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 
 @Table
@@ -19,6 +20,9 @@ import java.util.stream.Collectors;
 @EqualsAndHashCode(of = {"rota", "periodoPlanejado"}, callSuper = true)
 @NoArgsConstructor(access = AccessLevel.PUBLIC, force = true)
 public final class Viagem extends AbstractAggregateRoot<ViagemId> {
+
+    @Embedded
+    private Codigo codigo;
 
     @Embedded
     private Rota rota;
@@ -51,10 +55,31 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
                     columnNames = {"viagem_id", "aluno_id"}
             )
     )
-    private Set<Passageiro> passageiros = new HashSet<>();
+    @Column(name = "aluno_id")
+    private Set<AlunoId> passageiros = new HashSet<>();
+
+    @Embedded
+    @AttributeOverride(name = "uuid", column = @Column(name = "planejamento_id"))
+    private PlanejamentoId planejamento;
+
+    @Embedded
+    @AttributeOverride(name = "uuid", column = @Column(name = "checklist_inicial_id"))
+    private GrupoChecklistId checklistInicial;
+
+    @Embedded
+    @AttributeOverride(name = "uuid", column = @Column(name = "checklist_final_id"))
+    private GrupoChecklistId checklistFinal;
 
     @Builder
-    private Viagem(Rota rota, PeriodoPlanejado periodoPlanejado, MotoristaId motorista, MonitorId monitor, VeiculoId veiculo) {
+    private Viagem(Codigo codigo,
+                   Rota rota,
+                   PeriodoPlanejado periodoPlanejado,
+                   MotoristaId motorista,
+                   MonitorId monitor,
+                   VeiculoId veiculo,
+                   PlanejamentoId planejamento,
+                   GrupoChecklistId checklistInicial,
+                   GrupoChecklistId checklistFinal) {
         super(ViagemId.randomId());
         this.rota = rota;
         this.periodoPlanejado = periodoPlanejado;
@@ -62,6 +87,11 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
         this.motorista = motorista;
         this.monitor = monitor;
         this.veiculo = veiculo;
+        this.codigo = codigo;
+        this.planejamento = planejamento;
+        this.checklistInicial = checklistInicial;
+        this.checklistFinal = checklistFinal;
+
         this.registerEvent(ViagemCriada.from(this));
     }
 
@@ -75,15 +105,59 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
         this.registerEvent(MonitorAlocado.from(this));
     }
 
+    public void trocarVeiculo(VeiculoId veiculo) {
+        this.veiculo = veiculo;
+        this.registerEvent(VeiculoAlterado.from(this));
+    }
+
+    public void trocarRota(Rota rota) {
+        this.rota = rota;
+        this.registerEvent(RotaAlterada.from(this));
+    }
+
+    public void desalocarMotorista() {
+        this.motorista = MotoristaId.VAZIO;
+        this.registerEvent(MotoristaDesalocado.from(this));
+    }
+
+    public void desalocarMonitor() {
+        this.monitor = MonitorId.VAZIO;
+        this.registerEvent(MonitorDesalocado.from(this));
+    }
+
+    public void trocarMotorista(MotoristaId motorista) {
+        desalocarMotorista();
+        alocarMotorista(motorista);
+    }
+
+    public void trocarMonitor(MonitorId monitor) {
+        desalocarMonitor();
+        alocarMonitor(monitor);
+    }
+
+    public ViagemForm update() {
+        return new ViagemForm((form) -> {
+            trocarRota(form.getRota());
+            trocarMotorista(form.getMotorista());
+            trocarMonitor(form.getMonitor());
+            trocarVeiculo(form.getVeiculo());
+            adicionarPassageiros(form.getPassageiros());
+            this.periodoPlanejado = form.getPeriodoPlanejado();
+            this.checklistInicial = form.getChecklistInicial();
+            this.checklistFinal = form.getChecklistFinal();
+        });
+    }
+
+
     public void adicionarPassageiro(AlunoId alunoId) {
         boolean jaExiste = passageiros.stream()
-                .anyMatch(p -> p.getAluno().equals(alunoId));
+                .anyMatch(p -> p.equals(alunoId));
 
         if (jaExiste) {
             throw new IllegalArgumentException("Aluno já está na viagem");
         }
 
-        passageiros.add(Passageiro.of(alunoId));
+        passageiros.add(alunoId);
     }
 
     public void adicionarPassageiros(Set<AlunoId> alunosIds) {
@@ -91,41 +165,25 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
     }
 
     public void removerPassageiro(AlunoId alunoId) {
-        Passageiro passageiro = buscarPassageiro(alunoId);
-
-        if (passageiro.embarcou()) {
-            throw new IllegalStateException("Não é possível remover passageiro já embarcado");
-        }
+        AlunoId passageiro = buscarPassageiro(alunoId);
 
         passageiros.remove(passageiro);
     }
 
-    public void embarcarPassageiro(AlunoId alunoId, LocalDateTime horario) {
-        Passageiro passageiro = buscarPassageiro(alunoId);
-        passageiro.embarcar(horario);
-        registerEvent(PassageiroEmbarcado.from(this));
-    }
-
-    public void marcarFalta(AlunoId alunoId) {
-        Passageiro passageiro = buscarPassageiro(alunoId);
-        passageiro.faltou();
-        this.registerEvent(PassageiroFaltouSemJustificativa.from(this));
-    }
-
-    public void marcarAusenciaJustificada(AlunoId alunoId, String motivo) {
-        Passageiro passageiro = buscarPassageiro(alunoId);
-        passageiro.ausenteJustificado(motivo);
-        this.registerEvent(PassageiroAusenciaRegistrada.from(this));
-    }
-
-    private Passageiro buscarPassageiro(AlunoId alunoId) {
+    private AlunoId buscarPassageiro(AlunoId alunoId) {
         return passageiros.stream()
-                .filter(p -> p.getAluno().equals(alunoId))
+                .filter(p -> p.equals(alunoId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Aluno não está na viagem"));
     }
 
     public void iniciar() {
+        if (status != Status.PENDENTE) {
+            throw new NaoPossivelIniciarViagemQueNaoSejaPendente();
+        }
+        if (motorista == null || veiculo == null) {
+            throw new ViagemIncompleta();
+        }
         this.periodoReal = PeriodoReal.of(periodoPlanejado.getPartida());
         this.status = Status.INICIADA;
         this.registerEvent(ViagemIniciada.from(this));
@@ -138,6 +196,12 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
     }
 
     public void cancelar() {
+        if (status != Status.PENDENTE) {
+            throw new NaoPossivelIniciarViagemQueNaoSejaPendente();
+        }
+        if (motorista == null || veiculo == null) {
+            throw new ViagemIncompleta();
+        }
         this.status = Status.CANCELADA;
         this.registerEvent(ViagemCancelada.from(this));
     }

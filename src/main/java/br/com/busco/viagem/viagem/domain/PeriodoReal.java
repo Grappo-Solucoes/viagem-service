@@ -12,14 +12,13 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 import static java.util.Objects.isNull;
-import static lombok.AccessLevel.PRIVATE;
-import static lombok.AccessLevel.PUBLIC;
+import static lombok.AccessLevel.*;
 
 @Getter
 @Embeddable
 @EqualsAndHashCode(of = {"partida", "chegada"})
 @NoArgsConstructor(access = PUBLIC, force = true)
-@AllArgsConstructor(access = PRIVATE)
+@AllArgsConstructor(access = PROTECTED)
 public class PeriodoReal implements ValueObject {
 
     private LocalDateTime partida;

@@ -14,12 +14,12 @@ import java.time.Instant;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
-public class PassageiroFaltouSemJustificativa implements DomainEvent {
+public class RotaAlterada implements DomainEvent {
     @NotNull(message = "O parâmetro 'id' é obrigatório!")
     private ViagemId id;
     private Instant occurredOn;
 
-    public static PassageiroFaltouSemJustificativa from(Viagem viagem) {
-        return new PassageiroFaltouSemJustificativa(viagem.getId(), Instant.now());
+    public static RotaAlterada from(Viagem viagem) {
+        return new RotaAlterada(viagem.getId(), Instant.now());
     }
 }
