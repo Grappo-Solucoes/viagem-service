@@ -61,7 +61,7 @@ public class ViagemService {
             alunos = cmd.getAlunos().stream().map(UUID::toString).map(AlunoId::fromString).collect(Collectors.toSet());
         }
 
-        if (!disponibilidadeMotoristaPolicy.isDisponivel(motorista)) {
+        if (!disponibilidadeMotoristaPolicy.isDisponivel(motorista, periodoPlanejado)) {
             throw new MotoristaComViagemAgendada(periodoPlanejado.getPartida());
         }
 
@@ -102,7 +102,7 @@ public class ViagemService {
             alunos = cmd.getAlunos().stream().map(UUID::toString).map(AlunoId::fromString).collect(Collectors.toSet());
         }
 
-        if (!disponibilidadeMotoristaPolicy.isDisponivel(motorista)) {
+        if (!disponibilidadeMotoristaPolicy.isDisponivel(motorista, periodoPlanejado)) {
             throw new MotoristaComViagemAgendada(periodoPlanejado.getPartida());
         }
 

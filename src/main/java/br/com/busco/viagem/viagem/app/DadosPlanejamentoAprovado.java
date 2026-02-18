@@ -2,6 +2,7 @@ package br.com.busco.viagem.viagem.app;
 
 import br.com.busco.viagem.sk.ddd.ValueObject;
 import br.com.busco.viagem.sk.ids.*;
+import br.com.busco.viagem.sk.vo.Rota;
 import jakarta.persistence.Embeddable;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -19,7 +20,7 @@ import static lombok.AccessLevel.PUBLIC;
 @NoArgsConstructor(access = PUBLIC, force = true)
 public class DadosPlanejamentoAprovado implements ValueObject {
 
-    private UUID rota;
+    private Rota rota;
     private List<AlunoId> alunos;
     private MotoristaId motorista;
     private MonitorId monitor;
@@ -29,7 +30,7 @@ public class DadosPlanejamentoAprovado implements ValueObject {
     private PlanejamentoId planejamento;
 
     @Builder
-    private DadosPlanejamentoAprovado(UUID rota, List<AlunoId> alunos, MotoristaId motorista, MonitorId monitor, VeiculoId veiculo, GrupoChecklistId grupoChecklistInicial, GrupoChecklistId grupoChecklistFinal, PlanejamentoId planejamento) {
+    private DadosPlanejamentoAprovado(Rota rota, List<AlunoId> alunos, MotoristaId motorista, MonitorId monitor, VeiculoId veiculo, GrupoChecklistId grupoChecklistInicial, GrupoChecklistId grupoChecklistFinal, PlanejamentoId planejamento) {
         this.rota = rota;
         this.alunos = alunos;
         this.motorista = motorista;
