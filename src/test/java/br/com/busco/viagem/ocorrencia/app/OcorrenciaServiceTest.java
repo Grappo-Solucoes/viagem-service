@@ -8,6 +8,7 @@ import br.com.busco.viagem.ocorrencia.domain.Emergencia;
 import br.com.busco.viagem.ocorrencia.domain.EmergenciaRepository;
 import br.com.busco.viagem.ocorrencia.domain.Ocorrencia;
 import br.com.busco.viagem.ocorrencia.domain.OcorrenciaRepository;
+import br.com.busco.viagem.ocorrencia.domain.SetorResponsavel;
 import br.com.busco.viagem.ocorrencia.domain.StatusOcorrencia;
 import br.com.busco.viagem.ocorrencia.domain.TipoOcorrencia;
 import br.com.busco.viagem.ocorrencia.domain.TipoEmergencia;
@@ -15,6 +16,7 @@ import br.com.busco.viagem.ocorrencia.domain.TipoOcorrenciaRepository;
 import br.com.busco.viagem.sk.ids.EmergenciaId;
 import br.com.busco.viagem.sk.ids.OcorrenciaId;
 import br.com.busco.viagem.sk.ids.TipoOcorrenciaId;
+import br.com.busco.viagem.sk.ids.UserId;
 import br.com.busco.viagem.sk.ids.ViagemId;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -106,16 +108,16 @@ class OcorrenciaServiceTest {
                 .tipoOcorrencia(UUID.fromString(tipo.getId().toUUID()))
                 .motivo("Pane no motor")
                 .setorResponsavel("Operacao")
-                .responsavelTratativas("Maria")
+                .responsavelTratativas(UUID.randomUUID())
                 .build();
 
         OcorrenciaId id = service.handle(cmd);
 
         Ocorrencia ocorrencia = ocorrenciaRepository.findById(id).orElseThrow();
-        assertThat(ocorrencia.getMotivo()).isEqualTo("Pane no motor");
+        assertThat(ocorrencia.getMotivo().getMotivo()).isEqualTo("Pane no motor");
         assertThat(ocorrencia.getStatusOcorrencia()).isEqualTo(StatusOcorrencia.PENDENTE);
-        assertThat(ocorrencia.getSetorResponsavel()).isEqualTo("Operacao");
-        assertThat(ocorrencia.getResponsavelTratativas()).isEqualTo("Maria");
+        assertThat(ocorrencia.getSetorResponsavel()).isEqualTo(SetorResponsavel.of("Operacao"));
+        assertThat(ocorrencia.getResponsavelTratativas()).isNotEqualTo(UserId.VAZIO);
         assertThat(ocorrencia.getUserId()).isEqualTo(usuarioAutenticadoGateway.getUserId());
     }
 
@@ -246,7 +248,7 @@ class OcorrenciaServiceTest {
                 .viagem(ViagemId.fromString(viagemExistente.toString()))
                 .tipoOcorrencia(tipo.getId())
                 .motivo("Fumaça no motor")
-                .userId(usuarioAutenticadoGateway.getUserId())
+                .userId(UserId.randomId())
                 .build();
 
         return ocorrenciaRepository.save(ocorrencia);
@@ -318,8 +320,8 @@ class OcorrenciaServiceTest {
 
     private record FixedUsuarioAutenticadoGateway(UUID userId) implements UsuarioAutenticadoGateway {
         @Override
-        public UUID getUserId() {
-            return userId;
+        public UserId getUserId() {
+            return UserId.fromString(userId.toString());
         }
     }
 }

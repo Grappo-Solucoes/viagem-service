@@ -1,6 +1,10 @@
 package br.com.busco.viagem.ocorrencia.domain;
 
+import br.com.busco.viagem.ocorrencia.domain.exceptions.NaoPossivelFinalizarOcorrenciaQueNaoSejaTratativas;
+import br.com.busco.viagem.ocorrencia.domain.exceptions.NaoPossivelIniciarAnaliseOcorrenciaQueNaoSejaPendente;
+import br.com.busco.viagem.ocorrencia.domain.exceptions.NaoPossivelIniciarTratativasOcorrenciaQueNaoSejaEmAndamento;
 import br.com.busco.viagem.sk.ids.TipoOcorrenciaId;
+import br.com.busco.viagem.sk.ids.UserId;
 import br.com.busco.viagem.sk.ids.ViagemId;
 import org.junit.jupiter.api.Test;
 
@@ -17,9 +21,9 @@ class OcorrenciaTest {
                 .viagem(ViagemId.fromString(UUID.randomUUID().toString()))
                 .tipoOcorrencia(TipoOcorrenciaId.fromString(UUID.randomUUID().toString()))
                 .motivo("Pneu furado")
-                .userId(UUID.randomUUID())
-                .setorResponsavel("Operacao")
-                .responsavelTratativas("Joao")
+                .userId(UserId.randomId())
+                .setorResponsavel(SetorResponsavel.of("Operacao"))
+                .responsavelTratativas(UserId.randomId())
                 .build();
 
         assertThat(ocorrencia.getId()).isNotNull();
@@ -28,8 +32,8 @@ class OcorrenciaTest {
         assertThat(ocorrencia.getDataInicioAnalise()).isNull();
         assertThat(ocorrencia.getDataInicioTratativas()).isNull();
         assertThat(ocorrencia.getDataFinalizada()).isNull();
-        assertThat(ocorrencia.getSetorResponsavel()).isEqualTo("Operacao");
-        assertThat(ocorrencia.getResponsavelTratativas()).isEqualTo("Joao");
+        assertThat(ocorrencia.getSetorResponsavel()).isEqualTo(SetorResponsavel.of("Operacao"));
+        assertThat(ocorrencia.getResponsavelTratativas()).isNotEqualTo(UserId.VAZIO);
     }
 
     @Test
@@ -48,7 +52,7 @@ class OcorrenciaTest {
         ocorrencia.iniciarAnalise();
 
         assertThatThrownBy(ocorrencia::iniciarAnalise)
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(NaoPossivelIniciarAnaliseOcorrenciaQueNaoSejaPendente.class)
                 .hasMessage("A analise so pode ser iniciada a partir do status PENDENTE.");
     }
 
@@ -68,7 +72,7 @@ class OcorrenciaTest {
         Ocorrencia ocorrencia = novaOcorrencia();
 
         assertThatThrownBy(ocorrencia::iniciarTratativas)
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(NaoPossivelIniciarTratativasOcorrenciaQueNaoSejaEmAndamento.class)
                 .hasMessage("As tratativas so podem ser iniciadas a partir do status EM_ANDAMENTO.");
     }
 
@@ -89,7 +93,7 @@ class OcorrenciaTest {
         Ocorrencia ocorrencia = novaOcorrencia();
 
         assertThatThrownBy(ocorrencia::finalizar)
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(NaoPossivelFinalizarOcorrenciaQueNaoSejaTratativas.class)
                 .hasMessage("A ocorrencia so pode ser finalizada a partir do status TRATATIVAS.");
     }
 
@@ -98,7 +102,7 @@ class OcorrenciaTest {
                 .viagem(ViagemId.fromString(UUID.randomUUID().toString()))
                 .tipoOcorrencia(TipoOcorrenciaId.fromString(UUID.randomUUID().toString()))
                 .motivo("Quebra de veiculo")
-                .userId(UUID.randomUUID())
+                .userId(UserId.randomId())
                 .build();
     }
 }

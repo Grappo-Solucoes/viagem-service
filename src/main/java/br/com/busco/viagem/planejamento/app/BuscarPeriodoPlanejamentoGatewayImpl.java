@@ -1,13 +1,13 @@
-package br.com.busco.viagem.viagem.app;
+package br.com.busco.viagem.planejamento.app;
 
-import br.com.busco.viagem.planejamento.app.PlanejamentoService;
+import br.com.busco.viagem.planejamento.domain.PeriodoPlanejado;
 import br.com.busco.viagem.planejamento.domain.Planejamento;
 import br.com.busco.viagem.sk.ids.PlanejamentoId;
+import br.com.busco.viagem.viagem.app.BuscarPeriodoPlanejamentoGateway;
+import br.com.busco.viagem.viagem.app.PeriodoPlanejamento;
 import lombok.AllArgsConstructor;
-import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
-@Log
 @Component
 @AllArgsConstructor
 public class BuscarPeriodoPlanejamentoGatewayImpl implements BuscarPeriodoPlanejamentoGateway {
@@ -16,7 +16,7 @@ public class BuscarPeriodoPlanejamentoGatewayImpl implements BuscarPeriodoPlanej
     @Override
     public PeriodoPlanejamento buscarPeriodoPlanejamento(PlanejamentoId planejamento) {
         Planejamento dados = service.buscarPorId(planejamento);
-        br.com.busco.viagem.planejamento.domain.PeriodoPlanejado periodo = dados.getPeriodoPlanejado();
+        PeriodoPlanejado periodo = dados.getPeriodoPlanejado();
 
         return PeriodoPlanejamento.builder()
                 .inicio(periodo.getInicio().toLocalDate())

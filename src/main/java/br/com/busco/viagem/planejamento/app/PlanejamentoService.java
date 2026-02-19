@@ -128,24 +128,31 @@ public class PlanejamentoService {
         Planejamento planejamento = buscarPorId(PlanejamentoId.fromString(cmd.getId().toString()));
 
         Rota rota = cmd.getRota() != null ? rotaGateway.buscarRotaPorId(cmd.getRota()) : null;
-        MotoristaId motorista = cmd.getMotorista() != null ? MotoristaId.fromString(cmd.getMotorista().toString()) : null;
-        MonitorId monitor = cmd.getMonitor() != null ? MonitorId.fromString(cmd.getMonitor().toString()) : null;
-        VeiculoId veiculo = cmd.getVeiculo() != null ? VeiculoId.fromString(cmd.getVeiculo().toString()) : null;
+        MotoristaId motorista = cmd.getMotorista() != null
+                ? MotoristaId.fromString(cmd.getMotorista().toString())
+                : MotoristaId.VAZIO;
+        MonitorId monitor = cmd.getMonitor() != null
+                ? MonitorId.fromString(cmd.getMonitor().toString())
+                : MonitorId.VAZIO;
+        VeiculoId veiculo = cmd.getVeiculo() != null
+                ? VeiculoId.fromString(cmd.getVeiculo().toString())
+                : VeiculoId.VAZIO;
         GrupoChecklistId checklistInicial = cmd.getGrupoChecklistInicial() != null
                 ? GrupoChecklistId.fromString(cmd.getGrupoChecklistInicial().toString())
-                : null;
+                : GrupoChecklistId.VAZIO;
         GrupoChecklistId checklistFinal = cmd.getGrupoChecklistFinal() != null
                 ? GrupoChecklistId.fromString(cmd.getGrupoChecklistFinal().toString())
-                : null;
+                : GrupoChecklistId.VAZIO;
         Set<AlunoId> alunos = cmd.getAlunos() != null
                 ? cmd.getAlunos().stream().map(UUID::toString).map(AlunoId::fromString).collect(Collectors.toSet())
-                : null;
+                : new HashSet<>();
         Set<CalendarioId> calendarios = cmd.getCalendario() != null
                 ? cmd.getCalendario().stream().map(UUID::toString).map(CalendarioId::fromString).collect(Collectors.toSet())
-                : null;
+                : new HashSet<>();
 
         planejamento.updateForm()
-                .data(cmd.getData())
+                .partida(cmd.getPartida())
+                .chegada(cmd.getChegada())
                 .rota(rota)
                 .motorista(motorista)
                 .monitor(monitor)

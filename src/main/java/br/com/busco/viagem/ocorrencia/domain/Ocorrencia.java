@@ -1,5 +1,8 @@
 package br.com.busco.viagem.ocorrencia.domain;
 
+import br.com.busco.viagem.ocorrencia.domain.exceptions.NaoPossivelFinalizarOcorrenciaQueNaoSejaTratativas;
+import br.com.busco.viagem.ocorrencia.domain.exceptions.NaoPossivelIniciarAnaliseOcorrenciaQueNaoSejaPendente;
+import br.com.busco.viagem.ocorrencia.domain.exceptions.NaoPossivelIniciarTratativasOcorrenciaQueNaoSejaEmAndamento;
 import br.com.busco.viagem.ocorrencia.domain.events.OcorrenciaAnaliseIniciada;
 import br.com.busco.viagem.ocorrencia.domain.events.OcorrenciaFinalizada;
 import br.com.busco.viagem.ocorrencia.domain.events.OcorrenciaRealizada;
@@ -7,12 +10,12 @@ import br.com.busco.viagem.ocorrencia.domain.events.OcorrenciaTratativasIniciada
 import br.com.busco.viagem.sk.ddd.AbstractAggregateRoot;
 import br.com.busco.viagem.sk.ids.OcorrenciaId;
 import br.com.busco.viagem.sk.ids.TipoOcorrenciaId;
+import br.com.busco.viagem.sk.ids.UserId;
 import br.com.busco.viagem.sk.ids.ViagemId;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Table
 @Entity
@@ -27,11 +30,14 @@ public class Ocorrencia extends AbstractAggregateRoot<OcorrenciaId> {
     private ViagemId viagem;
 
     @NonNull
-    private String motivo;
+    @Embedded
+    @AttributeOverride(name = "motivo", column = @Column(name = "motivo", nullable = false))
+    private MotivoOcorrencia motivo;
 
-    @Column(name = "user_id", nullable = false)
+    @Embedded
+    @AttributeOverride(name = "uuid", column = @Column(name = "user_id", nullable = false))
     @NonNull
-    private UUID userId;
+    private UserId userId;
 
     @Embedded
     @AttributeOverride(name = "uuid", column = @Column(name = "tipo_ocorrencia_id", nullable = false))
@@ -42,75 +48,75 @@ public class Ocorrencia extends AbstractAggregateRoot<OcorrenciaId> {
     @Column(name = "status_ocorrencia", nullable = false)
     private StatusOcorrencia statusOcorrencia;
 
-    private LocalDateTime data;
+    @Embedded
+    private DatasAlteracaoOcorrencia datasAlteracao;
 
-    private LocalDateTime dataInicioAnalise;
+    @Embedded
+    private SetorResponsavel setorResponsavel;
 
-    private LocalDateTime dataInicioTratativas;
-
-    private LocalDateTime dataFinalizada;
-
-    private String setorResponsavel;
-
-    private String responsavelTratativas;
+    @Embedded
+    @AttributeOverride(name = "uuid", column = @Column(name = "responsavel_tratativas_id"))
+    private UserId responsavelTratativas;
 
     @Builder
     private Ocorrencia(@NonNull ViagemId viagem,
                        @NonNull String motivo,
-                       @NonNull UUID userId,
+                       @NonNull UserId userId,
                        @NonNull TipoOcorrenciaId tipoOcorrencia,
-                       String setorResponsavel,
-                       String responsavelTratativas) {
+                       SetorResponsavel setorResponsavel,
+                       UserId responsavelTratativas) {
         super(OcorrenciaId.randomId());
         this.viagem = viagem;
-        this.motivo = motivo;
+        this.motivo = MotivoOcorrencia.of(motivo);
         this.userId = userId;
         this.tipoOcorrencia = tipoOcorrencia;
-        this.data = LocalDateTime.now();
+        this.datasAlteracao = DatasAlteracaoOcorrencia.criar();
         this.statusOcorrencia = StatusOcorrencia.PENDENTE;
-        this.setorResponsavel = setorResponsavel;
-        this.responsavelTratativas = responsavelTratativas;
-    }
-
-    public static class OcorrenciaBuilder {
-        public Ocorrencia build() {
-            Ocorrencia ocorrencia = new Ocorrencia(
-                    this.viagem,
-                    this.motivo,
-                    this.userId,
-                    this.tipoOcorrencia,
-                    this.setorResponsavel,
-                    this.responsavelTratativas
-            );
-            ocorrencia.registerEvent(OcorrenciaRealizada.from(ocorrencia));
-            return ocorrencia;
-        }
+        this.setorResponsavel = setorResponsavel != null ? setorResponsavel : SetorResponsavel.VAZIO;
+        this.responsavelTratativas = responsavelTratativas != null ? responsavelTratativas : UserId.VAZIO;
+        this.registerEvent(OcorrenciaRealizada.from(this));
     }
 
     public void iniciarAnalise() {
         if (this.statusOcorrencia != StatusOcorrencia.PENDENTE) {
-            throw new IllegalStateException("A analise so pode ser iniciada a partir do status PENDENTE.");
+            throw new NaoPossivelIniciarAnaliseOcorrenciaQueNaoSejaPendente();
         }
         this.statusOcorrencia = StatusOcorrencia.EM_ANDAMENTO;
-        this.dataInicioAnalise = LocalDateTime.now();
+        this.datasAlteracao = this.datasAlteracao.comInicioAnalise();
         this.registerEvent(OcorrenciaAnaliseIniciada.from(this));
     }
 
     public void iniciarTratativas() {
         if (this.statusOcorrencia != StatusOcorrencia.EM_ANDAMENTO) {
-            throw new IllegalStateException("As tratativas so podem ser iniciadas a partir do status EM_ANDAMENTO.");
+            throw new NaoPossivelIniciarTratativasOcorrenciaQueNaoSejaEmAndamento();
         }
         this.statusOcorrencia = StatusOcorrencia.TRATATIVAS;
-        this.dataInicioTratativas = LocalDateTime.now();
+        this.datasAlteracao = this.datasAlteracao.comInicioTratativas();
         this.registerEvent(OcorrenciaTratativasIniciada.from(this));
     }
 
     public void finalizar() {
         if (this.statusOcorrencia != StatusOcorrencia.TRATATIVAS) {
-            throw new IllegalStateException("A ocorrencia so pode ser finalizada a partir do status TRATATIVAS.");
+            throw new NaoPossivelFinalizarOcorrenciaQueNaoSejaTratativas();
         }
         this.statusOcorrencia = StatusOcorrencia.FINALIZADA;
-        this.dataFinalizada = LocalDateTime.now();
+        this.datasAlteracao = this.datasAlteracao.comFinalizacao();
         this.registerEvent(OcorrenciaFinalizada.from(this));
+    }
+
+    public LocalDateTime getData() {
+        return this.datasAlteracao.getData();
+    }
+
+    public LocalDateTime getDataInicioAnalise() {
+        return this.datasAlteracao.getDataInicioAnalise();
+    }
+
+    public LocalDateTime getDataInicioTratativas() {
+        return this.datasAlteracao.getDataInicioTratativas();
+    }
+
+    public LocalDateTime getDataFinalizada() {
+        return this.datasAlteracao.getDataFinalizada();
     }
 }

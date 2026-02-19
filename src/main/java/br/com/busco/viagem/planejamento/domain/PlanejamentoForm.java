@@ -15,7 +15,8 @@ import java.util.function.Consumer;
 public final class PlanejamentoForm {
 
     private final Consumer<PlanejamentoForm> action;
-    private LocalDateTime data;
+    private LocalDateTime partida;
+    private LocalDateTime chegada;
     private Rota rota;
     private MotoristaId motorista;
     private MonitorId monitor;
@@ -25,8 +26,13 @@ public final class PlanejamentoForm {
     private GrupoChecklistId checklistFinal;
     private Set<CalendarioId> calendarios = new HashSet<>();
 
-    public PlanejamentoForm data(LocalDateTime data) {
-        this.data = data;
+    public PlanejamentoForm partida(LocalDateTime partida) {
+        this.partida = partida;
+        return this;
+    }
+
+    public PlanejamentoForm chegada(LocalDateTime chegada) {
+        this.chegada = chegada;
         return this;
     }
 

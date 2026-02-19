@@ -26,6 +26,14 @@ public interface ViagemRepository {
             @Param("viagemAtual") ViagemId viagemAtual,
             @Param("planejamento") PlanejamentoId planejamento);
 
+    @Query("SELECT CASE WHEN COUNT(vAtual) = 1 AND COUNT(v) = 0 THEN true ELSE false END " +
+            "FROM Viagem vAtual " +
+            "LEFT JOIN Viagem v ON v.planejamento = vAtual.planejamento " +
+            "AND v.id != vAtual.id " +
+            "AND v.status IN ('INICIADA', 'FINALIZADA') " +
+            "WHERE vAtual.id = :viagemAtual")
+    Boolean isPrimeiraViagemDoPlanejamento(@Param("viagemAtual") ViagemId viagemAtual);
+
     @Query("SELECT CASE WHEN COUNT(v) = 0 THEN true ELSE false END " +
             "FROM Viagem v " +
             "WHERE v.planejamento = :planejamento " +

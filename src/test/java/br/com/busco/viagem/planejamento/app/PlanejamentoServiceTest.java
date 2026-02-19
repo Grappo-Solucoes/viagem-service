@@ -137,7 +137,8 @@ class PlanejamentoServiceTest {
 
         EditarPlanejamento cmd = EditarPlanejamento.builder()
                 .id(UUID.fromString(id.toUUID()))
-                .data(novaData)
+                .partida(novaData)
+                .chegada(novaData.plusHours(2))
                 .motorista(UUID.randomUUID())
                 .veiculo(UUID.randomUUID())
                 .monitor(UUID.randomUUID())

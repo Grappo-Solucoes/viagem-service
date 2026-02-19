@@ -8,11 +8,13 @@ import br.com.busco.viagem.ocorrencia.domain.Emergencia;
 import br.com.busco.viagem.ocorrencia.domain.EmergenciaRepository;
 import br.com.busco.viagem.ocorrencia.domain.Ocorrencia;
 import br.com.busco.viagem.ocorrencia.domain.OcorrenciaRepository;
+import br.com.busco.viagem.ocorrencia.domain.SetorResponsavel;
 import br.com.busco.viagem.ocorrencia.domain.TipoOcorrencia;
 import br.com.busco.viagem.ocorrencia.domain.TipoOcorrenciaRepository;
 import br.com.busco.viagem.sk.ids.EmergenciaId;
 import br.com.busco.viagem.sk.ids.OcorrenciaId;
 import br.com.busco.viagem.sk.ids.TipoOcorrenciaId;
+import br.com.busco.viagem.sk.ids.UserId;
 import br.com.busco.viagem.sk.ids.ViagemId;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -76,8 +78,10 @@ public class OcorrenciaService {
                 .tipoOcorrencia(tipoId)
                 .motivo(cmd.getMotivo())
                 .userId(usuarioAutenticadoGateway.getUserId())
-                .setorResponsavel(cmd.getSetorResponsavel())
-                .responsavelTratativas(cmd.getResponsavelTratativas())
+                .setorResponsavel(SetorResponsavel.of(cmd.getSetorResponsavel()))
+                .responsavelTratativas(cmd.getResponsavelTratativas() != null
+                        ? UserId.fromString(cmd.getResponsavelTratativas().toString())
+                        : UserId.VAZIO)
                 .build();
 
         return repository.save(ocorrencia).getId();

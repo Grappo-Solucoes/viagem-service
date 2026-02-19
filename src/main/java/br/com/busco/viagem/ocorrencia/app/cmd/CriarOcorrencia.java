@@ -15,5 +15,5 @@ public class CriarOcorrencia {
     private UUID tipoOcorrencia;
     private String motivo;
     private String setorResponsavel;
-    private String responsavelTratativas;
+    private UUID responsavelTratativas;
 }

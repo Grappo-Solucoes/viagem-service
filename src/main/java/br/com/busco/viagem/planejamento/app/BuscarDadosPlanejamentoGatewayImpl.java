@@ -1,15 +1,14 @@
-package br.com.busco.viagem.viagem.app;
+package br.com.busco.viagem.planejamento.app;
 
-import br.com.busco.viagem.planejamento.app.PlanejamentoService;
 import br.com.busco.viagem.planejamento.domain.Planejamento;
 import br.com.busco.viagem.sk.ids.PlanejamentoId;
-import io.micrometer.common.lang.NonNull;
+import br.com.busco.viagem.viagem.app.BuscarDadosPlanejamentoGateway;
+import br.com.busco.viagem.viagem.app.DadosPlanejamentoAprovado;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.UUID;
 
 @Log
 @Component

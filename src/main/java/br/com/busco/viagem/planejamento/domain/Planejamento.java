@@ -139,9 +139,11 @@ public final class Planejamento extends AbstractAggregateRoot<PlanejamentoId> {
             if (form.getRota() != null) {
                 this.rota = form.getRota();
             }
-            if (form.getData() != null && this.periodoPlanejado != null) {
-                Duration duracao = Duration.between(this.periodoPlanejado.getInicio(), this.periodoPlanejado.getFim());
-                this.periodoPlanejado = PeriodoPlanejado.of(form.getData(), form.getData().plus(duracao));
+            if (form.getPartida() != null) {
+                this.periodoPlanejado = PeriodoPlanejado.of(form.getPartida(), this.periodoPlanejado.getFim());
+            }
+            if (form.getChegada() != null) {
+                this.periodoPlanejado = PeriodoPlanejado.of(this.periodoPlanejado.getInicio(), form.getChegada());
             }
             if (form.getMotorista() != null) {
                 this.motorista = form.getMotorista();

@@ -1,8 +1,8 @@
 package br.com.busco.viagem.ocorrencia.app;
 
-import java.util.UUID;
+import br.com.busco.viagem.sk.ids.UserId;
 
 public interface UsuarioAutenticadoGateway {
 
-    UUID getUserId();
+    UserId getUserId();
 }
