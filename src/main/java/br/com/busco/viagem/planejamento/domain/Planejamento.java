@@ -10,6 +10,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -131,5 +132,40 @@ public final class Planejamento extends AbstractAggregateRoot<PlanejamentoId> {
 
     public void update() {
 
+    }
+
+    public PlanejamentoForm updateForm() {
+        return new PlanejamentoForm((form) -> {
+            if (form.getRota() != null) {
+                this.rota = form.getRota();
+            }
+            if (form.getPartida() != null) {
+                this.periodoPlanejado = PeriodoPlanejado.of(form.getPartida(), this.periodoPlanejado.getFim());
+            }
+            if (form.getChegada() != null) {
+                this.periodoPlanejado = PeriodoPlanejado.of(this.periodoPlanejado.getInicio(), form.getChegada());
+            }
+            if (form.getMotorista() != null) {
+                this.motorista = form.getMotorista();
+            }
+            if (form.getMonitor() != null) {
+                this.monitor = form.getMonitor();
+            }
+            if (form.getVeiculo() != null) {
+                this.veiculo = form.getVeiculo();
+            }
+            if (form.getPassageiros() != null) {
+                this.passageiros = form.getPassageiros();
+            }
+            if (form.getChecklistInicial() != null) {
+                this.checklistInicial = form.getChecklistInicial();
+            }
+            if (form.getChecklistFinal() != null) {
+                this.checklistFinal = form.getChecklistFinal();
+            }
+            if (form.getCalendarios() != null) {
+                this.calendarios = form.getCalendarios();
+            }
+        });
     }
 }

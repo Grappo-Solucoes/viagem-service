@@ -13,7 +13,8 @@ import java.util.UUID;
 @NoArgsConstructor
 public class EditarPlanejamento {
     private UUID id;
-    private LocalDateTime data;
+    private LocalDateTime partida;
+    private LocalDateTime chegada;
     private UUID motorista;
     private UUID rota;
     private List<UUID> calendario;

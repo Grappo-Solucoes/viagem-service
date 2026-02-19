@@ -9,8 +9,6 @@ import br.com.busco.viagem.sk.ObterUltimoCodigo;
 import br.com.busco.viagem.sk.gateway.RotaGateway;
 import br.com.busco.viagem.sk.ids.*;
 import br.com.busco.viagem.sk.vo.Rota;
-import br.com.busco.viagem.viagem.app.cmd.CancelarViagem;
-import br.com.busco.viagem.viagem.domain.Viagem;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -122,6 +120,72 @@ public class PlanejamentoService {
         planejamento.finalizar();
 
         return repository.save(planejamento).getId();
+    }
+
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public PlanejamentoId handle(@NonNull @Valid EditarPlanejamento cmd) {
+        Planejamento planejamento = buscarPorId(PlanejamentoId.fromString(cmd.getId().toString()));
+
+        Rota rota = cmd.getRota() != null ? rotaGateway.buscarRotaPorId(cmd.getRota()) : null;
+        MotoristaId motorista = cmd.getMotorista() != null
+                ? MotoristaId.fromString(cmd.getMotorista().toString())
+                : MotoristaId.VAZIO;
+        MonitorId monitor = cmd.getMonitor() != null
+                ? MonitorId.fromString(cmd.getMonitor().toString())
+                : MonitorId.VAZIO;
+        VeiculoId veiculo = cmd.getVeiculo() != null
+                ? VeiculoId.fromString(cmd.getVeiculo().toString())
+                : VeiculoId.VAZIO;
+        GrupoChecklistId checklistInicial = cmd.getGrupoChecklistInicial() != null
+                ? GrupoChecklistId.fromString(cmd.getGrupoChecklistInicial().toString())
+                : GrupoChecklistId.VAZIO;
+        GrupoChecklistId checklistFinal = cmd.getGrupoChecklistFinal() != null
+                ? GrupoChecklistId.fromString(cmd.getGrupoChecklistFinal().toString())
+                : GrupoChecklistId.VAZIO;
+        Set<AlunoId> alunos = cmd.getAlunos() != null
+                ? cmd.getAlunos().stream().map(UUID::toString).map(AlunoId::fromString).collect(Collectors.toSet())
+                : new HashSet<>();
+        Set<CalendarioId> calendarios = cmd.getCalendario() != null
+                ? cmd.getCalendario().stream().map(UUID::toString).map(CalendarioId::fromString).collect(Collectors.toSet())
+                : new HashSet<>();
+
+        planejamento.updateForm()
+                .partida(cmd.getPartida())
+                .chegada(cmd.getChegada())
+                .rota(rota)
+                .motorista(motorista)
+                .monitor(monitor)
+                .veiculo(veiculo)
+                .passageiros(alunos)
+                .checklistInicial(checklistInicial)
+                .checklistFinal(checklistFinal)
+                .calendarios(calendarios)
+                .aplicar();
+
+        return repository.save(planejamento).getId();
+    }
+
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public PlanejamentoId handle(@NonNull @Valid DuplicarPlanejamento cmd) {
+        Planejamento origem = buscarPorId(PlanejamentoId.fromString(cmd.getId().toString()));
+
+        Planejamento novo = Planejamento.builder()
+                .codigo(GeradorCodigo.by(obterUltimoCodigo).gerar())
+                .rota(origem.getRota())
+                .periodoPlanejado(origem.getPeriodoPlanejado())
+                .motorista(origem.getMotorista())
+                .monitor(origem.getMonitor())
+                .veiculo(origem.getVeiculo())
+                .passageiros(new HashSet<>(origem.getPassageiros()))
+                .checklistInicial(origem.getChecklistInicial())
+                .checklistFinal(origem.getChecklistFinal())
+                .diasDaSemana(new HashSet<>(origem.getDiasDaSemana()))
+                .calendarios(new HashSet<>(origem.getCalendarios()))
+                .build();
+
+        return repository.save(novo).getId();
     }
 
     @NonNull
