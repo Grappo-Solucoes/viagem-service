@@ -1,8 +1,5 @@
 package br.com.busco.viagem.infra.codigo;
 
-import br.com.busco.viagem.sk.ObterUltimoCodigo;
-import br.com.busco.viagem.sk.vo.Codigo;
-
 public class GeradorCodigo {
     private final ObterUltimoCodigo repo;
 

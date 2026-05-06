@@ -1,10 +1,10 @@
 package br.com.busco.viagem.viagem.domain;
 
+import br.com.busco.viagem.domain.Status;
+import br.com.busco.viagem.domain.Viagem;
 import br.com.busco.viagem.sk.ids.*;
-import br.com.busco.viagem.sk.vo.Codigo;
-import br.com.busco.viagem.sk.vo.Rota;
-import br.com.busco.viagem.viagem.domain.exceptions.NaoPossivelIniciarViagemQueNaoSejaPendente;
-import br.com.busco.viagem.viagem.domain.exceptions.ViagemIncompleta;
+import br.com.busco.viagem.domain.exceptions.NaoPossivelIniciarViagemQueNaoSejaPendente;
+import br.com.busco.viagem.domain.exceptions.ViagemIncompleta;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

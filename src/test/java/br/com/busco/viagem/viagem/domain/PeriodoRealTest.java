@@ -1,13 +1,11 @@
 package br.com.busco.viagem.viagem.domain;
 
-import br.com.busco.viagem.viagem.domain.exceptions.RealizacaoPeriodoSemDatasPrevistas;
+import br.com.busco.viagem.domain.exceptions.RealizacaoPeriodoSemDatasPrevistas;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 class PeriodoRealTest {
 

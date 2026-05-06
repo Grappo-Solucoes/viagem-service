@@ -3,8 +3,6 @@ package br.com.busco.viagem.ocorrencia.domain;
 import br.com.busco.viagem.ocorrencia.domain.exceptions.NaoPossivelFinalizarOcorrenciaQueNaoSejaTratativas;
 import br.com.busco.viagem.ocorrencia.domain.exceptions.NaoPossivelIniciarAnaliseOcorrenciaQueNaoSejaPendente;
 import br.com.busco.viagem.ocorrencia.domain.exceptions.NaoPossivelIniciarTratativasOcorrenciaQueNaoSejaEmAndamento;
-import br.com.busco.viagem.sk.ids.TipoOcorrenciaId;
-import br.com.busco.viagem.sk.ids.UserId;
 import br.com.busco.viagem.sk.ids.ViagemId;
 import org.junit.jupiter.api.Test;
 

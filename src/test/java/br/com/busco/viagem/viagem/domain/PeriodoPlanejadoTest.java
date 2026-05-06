@@ -1,6 +1,6 @@
 package br.com.busco.viagem.viagem.domain;
 
-import br.com.busco.viagem.viagem.domain.exceptions.PlanejamentoPeriodoSemDatasPrevistas;
+import br.com.busco.viagem.domain.exceptions.PlanejamentoPeriodoSemDatasPrevistas;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

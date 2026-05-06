@@ -1,7 +1,6 @@
 package br.com.busco.viagem.viagem.domain;
 
-import br.com.busco.viagem.sk.vo.Rota;
-import br.com.busco.viagem.viagem.domain.exceptions.RotaSemOrigemDestinoDefinidas;
+import br.com.busco.viagem.domain.exceptions.RotaSemOrigemDestinoDefinidas;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.Metrics;

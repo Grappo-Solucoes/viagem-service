@@ -2,7 +2,7 @@ package br.com.busco.viagem.infra.gateway;
 
 import br.com.busco.viagem.ocorrencia.app.BuscarViagemGateway;
 import br.com.busco.viagem.sk.ids.ViagemId;
-import br.com.busco.viagem.viagem.domain.ViagemRepository;
+import br.com.busco.viagem.domain.ViagemRepository;
 import lombok.AllArgsConstructor;
 
 import org.springframework.stereotype.Component;

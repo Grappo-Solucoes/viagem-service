@@ -1,14 +1,11 @@
 package br.com.busco.viagem.infra.gateway;
 
 import br.com.busco.viagem.ocorrencia.app.UsuarioAutenticadoGateway;
-import br.com.busco.viagem.sk.ids.UserId;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
-import java.util.UUID;
 
 @Component
 public class UsuarioAutenticadoGatewayImpl implements UsuarioAutenticadoGateway {

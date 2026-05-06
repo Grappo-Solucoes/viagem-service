@@ -2,8 +2,6 @@ package br.com.busco.viagem.infra.repo;
 
 import br.com.busco.viagem.planejamento.domain.Planejamento;
 import br.com.busco.viagem.planejamento.domain.PlanejamentoRepository;
-import br.com.busco.viagem.sk.ObterUltimoCodigo;
-import br.com.busco.viagem.sk.ids.PlanejamentoId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
