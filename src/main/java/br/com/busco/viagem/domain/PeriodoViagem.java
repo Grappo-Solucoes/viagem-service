@@ -22,7 +22,6 @@ import static lombok.AccessLevel.PUBLIC;
         "horarioRealFim"
 })
 @NoArgsConstructor(access = PUBLIC, force = true)
-@AllArgsConstructor(access = PRIVATE)
 public class PeriodoViagem implements ValueObject {
 
     private LocalDateTime horarioPrevistoInicio;
