@@ -22,7 +22,7 @@ import static br.com.busco.viagem.sk.ids.ViagemId.randomId;
 @Entity
 @Table(name = "viagens_execucao")
 @Getter
-@EqualsAndHashCode(of = {"id", "planejamento"}, callSuper = true)
+@EqualsAndHashCode(of = {"viagemPlanejada"}, callSuper = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public final class Viagem extends AbstractAggregateRoot<ViagemId> {
 
@@ -90,10 +90,10 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
 
     public void registrarChegadaParada(int ordem, LocalDateTime horarioChegada) {
         ParadaExecucao parada = getParadaPorOrdem(ordem);
-        parada.registrarChegada(horarioChegada);
+        parada.registrarChegada(horarioChegada, ordem);
 
         if (isUltimaParada(ordem)) {
-            this.status = Status.AGUARDANDO_FINALIZACAO;
+            this.status = Status.PENDENTE;
         }
 
         registerEvent(ChegadaParada.from(this, ordem, horarioChegada));
@@ -106,7 +106,7 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
     }
 
     public void finalizar(LocalDateTime horarioFinalizacao) {
-        if (status != Status.EM_ANDAMENTO && status != Status.AGUARDANDO_FINALIZACAO){
+        if (status != Status.EM_ANDAMENTO && status != Status.PENDENTE){
             throw new IllegalStateException("Só pode finalizar viagem em andamento");
         }
 
@@ -137,7 +137,7 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
         this.atrasoAcumulado = atraso;
 
         if (atraso.toMinutes() > 15) {
-            registerEvent(ViagemCriticamenteAtrasadaEvent.from(this, atraso));
+            registerEvent(AtrasoCritico.from(this, atraso));
         }
     }
 

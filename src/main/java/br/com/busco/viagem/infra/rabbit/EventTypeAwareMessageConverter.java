@@ -1,7 +1,7 @@
 package br.com.busco.viagem.infra.rabbit;
 
-import br.com.busco.presenca.domain.events.ViagemCriada;
-import br.com.busco.presenca.domain.events.ViagemFinalizada;
+import br.com.busco.viagem.domain.events.ViagemFinalizada;
+import br.com.busco.viagem.domain.events.ViagemIniciada;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -15,7 +15,7 @@ import java.util.Map;
 public class EventTypeAwareMessageConverter extends Jackson2JsonMessageConverter {
 
     private final Map<String, Class<?>> eventTypeMapping = Map.of(
-            "ViagemCriada", ViagemCriada.class,
+            "ViagemIniciada", ViagemIniciada.class,
             "ViagemFinalizada", ViagemFinalizada.class
     );
 

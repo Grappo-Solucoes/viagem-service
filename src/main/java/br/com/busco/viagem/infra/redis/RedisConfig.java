@@ -1,6 +1,6 @@
 package br.com.busco.viagem.infra.redis;
 
-import br.com.busco.presenca.sk.ids.AlunoId;
+import br.com.busco.viagem.sk.ids.AlunoId;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;

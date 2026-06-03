@@ -1,6 +1,7 @@
 package br.com.busco.viagem.domain;
 
 import br.com.busco.viagem.sk.ids.ViagemId;
+import br.com.busco.viagem.sk.ids.ViagemPlanejadaId;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDate;
@@ -14,7 +15,7 @@ public interface ViagemRepository {
     @Query("SELECT v FROM Viagem v WHERE v.status IN ('EM_ANDAMENTO', 'PAUSADA')")
     List<Viagem> findAllEmAndamento();
 
-    Optional<Viagem> findByPlanejamento(PlanejamentoId planejamentoId);
+    Optional<Viagem> findByViagemPlanejada(ViagemPlanejadaId viagemPlanejadaId);
 
     @Query("SELECT v FROM Viagem v WHERE v.dataViagem = :data AND v.status = 'PENDENTE'")
     List<Viagem> findViagensPendentesDoDia(LocalDate data);

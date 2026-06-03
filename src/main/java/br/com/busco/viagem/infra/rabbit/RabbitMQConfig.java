@@ -1,7 +1,7 @@
 package br.com.busco.viagem.infra.rabbit;
 
 
-import br.com.busco.presenca.sk.ddd.TenantAwareMessagePostProcessor;
+import br.com.busco.viagem.sk.ddd.TenantAwareMessagePostProcessor;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;

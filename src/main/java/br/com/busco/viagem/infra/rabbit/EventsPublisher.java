@@ -1,6 +1,6 @@
 package br.com.busco.viagem.infra.rabbit;
 
-import br.com.busco.presenca.sk.ddd.DomainEvent;
+import br.com.busco.viagem.sk.ddd.DomainEvent;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
