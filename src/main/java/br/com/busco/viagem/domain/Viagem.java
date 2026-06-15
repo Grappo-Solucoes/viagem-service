@@ -64,6 +64,8 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
         this.dataViagem = dataViagem;
         this.paradas = new ArrayList<>();
         this.atrasoAcumulado = Duration.ZERO;
+
+        registerEvent(ViagemCriada.from(this));
     }
 
     public void iniciar(LocalDateTime horarioReal, List<ParadaPrevista> paradasPrevistas) {
