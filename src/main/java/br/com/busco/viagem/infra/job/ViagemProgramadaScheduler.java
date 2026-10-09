@@ -1,113 +1,54 @@
 package br.com.busco.viagem.infra.job;
 
+import br.com.busco.viagem.app.ViagemPlanejadaEvent;
 import br.com.busco.viagem.app.ViagemService;
 import br.com.busco.viagem.app.cmd.CriarViagem;
-import br.com.busco.viagem.sk.ddd.TenantContext;
-import br.com.busco.viagem.sk.ddd.TenantId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.sql.Timestamp;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.UUID;
-
+/**
+ * Reage a {@link ViagemPlanejadaEvent} criando as viagens de execução.
+ * Substitui a leitura JDBC de {@code agendamento_operacional} (tabela de
+ * outro contexto). Desligável por profile ({@code sem-agendamento}) e
+ * inativo nos testes.
+ */
 @Component
-@Profile("!test")
+@Profile("!test & !sem-agendamento")
 @RequiredArgsConstructor
 @Slf4j
 public class ViagemProgramadaScheduler {
 
-    private final JdbcTemplate jdbcTemplate;
     private final ViagemService viagemService;
 
-    @Value("${viagem.criacao-programada.duracao-padrao-minutos:60}")
-    private long duracaoPadraoMinutos;
-
-    @Value("${viagem.criacao-programada.zone:America/Sao_Paulo}")
-    private String zone;
-
-    /*
-     Executa:
-     - todo dia à 00:00
-     - cria as viagens de execução para os agendamentos confirmados do dia
-    */
-    @Scheduled(cron = "0 0 0 * * *", zone = "${viagem.criacao-programada.zone:America/Sao_Paulo}")
-    public void criarViagensProgramadasDoDia() {
-        LocalDate data = LocalDate.now(ZoneId.of(zone));
-
-        try {
-            List<ViagemProgramada> viagensProgramadas = buscarViagensProgramadas(data);
-            int viagensCriadas = 0;
-
-            for (ViagemProgramada viagemProgramada : viagensProgramadas) {
-                try {
-                    criarViagem(viagemProgramada, data);
-                    viagensCriadas++;
-                } catch (Exception ex) {
-                    log.error("Erro ao criar viagem programada {}", viagemProgramada.id(), ex);
-                }
+    @EventListener
+    public void on(ViagemPlanejadaEvent evento) {
+        if (evento.datas() == null || evento.datas().isEmpty()) {
+            return;
+        }
+        int criadas = 0;
+        for (var data : evento.datas()) {
+            try {
+                CriarViagem cmd = CriarViagem.builder()
+                        .data(data)
+                        .rota(evento.rotaId())
+                        .motorista(evento.motoristaId())
+                        .monitor(evento.monitorId())
+                        .veiculo(evento.veiculoId())
+                        .planejamento(evento.planejamentoId())
+                        .passageiros(evento.passageiros())
+                        .alunos(evento.passageiros() == null ? null
+                                : evento.passageiros().stream()
+                                        .map(p -> p.getPassageiroId()).toList())
+                        .build();
+                viagemService.handle(cmd);
+                criadas++;
+            } catch (Exception ex) {
+                log.error("Erro ao criar viagem programada para {}", data, ex);
             }
-
-            log.info("{} de {} viagens programadas criadas para {}", viagensCriadas, viagensProgramadas.size(), data);
-        } catch (Exception ex) {
-            log.error("Erro ao criar viagens programadas para {}", data, ex);
         }
-    }
-
-    private List<ViagemProgramada> buscarViagensProgramadas(LocalDate data) {
-        LocalDateTime inicioDoDia = data.atStartOfDay();
-        LocalDateTime fimDoDia = data.plusDays(1).atStartOfDay();
-
-        return jdbcTemplate.query(
-                """
-                SELECT a.id, a.rota_id, a.data, a.tenant_id
-                  FROM agendamento_operacional a
-                 WHERE a.status = 'CONFIRMADO'
-                   AND a.data >= ?
-                   AND a.data < ?
-                   AND NOT EXISTS (
-                       SELECT 1
-                         FROM viagens_execucao v
-                        WHERE v.viagem_planejada_id = a.id
-                          AND v.tenant_id = a.tenant_id
-                   )
-                """,
-                (rs, rowNum) -> new ViagemProgramada(
-                        UUID.fromString(rs.getString("id")),
-                        UUID.fromString(rs.getString("rota_id")),
-                        rs.getTimestamp("data").toLocalDateTime(),
-                        TenantId.fromString(rs.getString("tenant_id"))
-                ),
-                Timestamp.valueOf(inicioDoDia),
-                Timestamp.valueOf(fimDoDia)
-        );
-    }
-
-    private void criarViagem(ViagemProgramada viagemProgramada, LocalDate data) {
-        LocalDateTime horarioInicio = viagemProgramada.horarioInicio();
-
-        try {
-            TenantContext.set(viagemProgramada.tenantId());
-
-            CriarViagem cmd = CriarViagem.builder()
-                    .data(horarioInicio)
-                    .rota(viagemProgramada.rota())
-                    .build();
-
-            viagemService.handle(cmd);
-        } finally {
-            TenantContext.clear();
-        }
-    }
-
-    private record ViagemProgramada(UUID id, UUID rota, LocalDateTime horarioInicio, TenantId tenantId) {
+        log.info("{} de {} viagens programadas criadas", criadas, evento.datas().size());
     }
 }

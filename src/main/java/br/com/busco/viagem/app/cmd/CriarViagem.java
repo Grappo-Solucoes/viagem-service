@@ -1,5 +1,6 @@
 package br.com.busco.viagem.app.cmd;
 
+import br.com.busco.viagem.domain.Passageiro;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -32,4 +33,6 @@ public class CriarViagem {
     private UUID grupoChecklistInicial;
     private UUID grupoChecklistFinal;
     private UUID planejamento;
+    /** Snapshots completos quando a origem os informa; senão usa só os ids de `alunos`. */
+    private List<Passageiro> passageiros;
 }

@@ -39,8 +39,6 @@ class ViagemAssumirTest {
     private ViagemRepository repository;
     @Mock
     private RotaRepository rotaRepository;
-    @Mock
-    private RotaGateway rotaGateway;
 
     private ViagemService service;
     private Viagem viagem;
@@ -48,7 +46,7 @@ class ViagemAssumirTest {
 
     @BeforeEach
     void setUp() {
-        service = new ViagemService(repository, rotaRepository, rotaGateway,
+        service = new ViagemService(repository, rotaRepository,
                 new com.fasterxml.jackson.databind.ObjectMapper());
         monitorAtual = UUID.randomUUID();
         viagem = Viagem.builder()

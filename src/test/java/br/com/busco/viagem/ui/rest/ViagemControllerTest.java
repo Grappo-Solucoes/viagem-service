@@ -40,6 +40,9 @@ class ViagemControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private org.springframework.context.ApplicationContext context;
+
     private UUID rotaId;
     private UUID motoristaId;
     private UUID monitorId;
@@ -293,6 +296,12 @@ class ViagemControllerTest {
                         .content("""
                                 {"nome":"Inexistente"}"""))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void schedulerLegadoDesligadoSemTabelaAlheia() {
+        assertThat(context.getBeansOfType(
+                br.com.busco.viagem.infra.job.ViagemProgramadaScheduler.class)).isEmpty();
     }
 
     @Test

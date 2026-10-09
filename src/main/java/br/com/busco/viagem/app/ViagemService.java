@@ -14,6 +14,7 @@ import br.com.busco.viagem.app.cmd.RegistrarChegadaParada;
 import br.com.busco.viagem.app.cmd.RegistrarSaidaParada;
 import br.com.busco.viagem.domain.Carteirinha;
 import br.com.busco.viagem.domain.Endereco;
+import br.com.busco.viagem.domain.ParadaPrevista;
 import br.com.busco.viagem.domain.Passageiro;
 import br.com.busco.viagem.domain.PeriodoViagem;
 import br.com.busco.viagem.domain.Rota;
@@ -55,7 +56,6 @@ public class ViagemService {
 
     private final ViagemRepository repository;
     private final RotaRepository rotaRepository;
-    private final RotaGateway rotaGateway;
     private final ObjectMapper objectMapper;
 
     @NonNull
@@ -64,7 +64,9 @@ public class ViagemService {
         rotaRepository.findById(rotaId).orElseThrow(() -> new EntityNotFoundException(
                 format("Rota não encontrada com o ID: %s", cmd.getRota())));
 
-        List<Passageiro> passageiros = cmd.getAlunos() == null ? List.of()
+        List<Passageiro> passageiros = cmd.getPassageiros() != null && !cmd.getPassageiros().isEmpty()
+                ? cmd.getPassageiros()
+                : cmd.getAlunos() == null ? List.of()
                 : cmd.getAlunos().stream().map(Passageiro::comId).toList();
 
         Viagem viagem = Viagem.builder()
@@ -94,13 +96,27 @@ public class ViagemService {
         LocalDateTime horarioPartida = cmd.getHorarioPartida() != null
                 ? cmd.getHorarioPartida() : LocalDateTime.now();
 
-        var paradasPrevistas = rotaGateway.calcularParadasComHorarios(
-                viagem.getRota(),
-                horarioPartida.toLocalTime()
-        );
+        // Agregado local (D2): paradas derivadas da rota própria, sem gateway externo.
+        Rota rota = rotaRepository.findById(viagem.getRota()).orElseThrow(
+                () -> new EntityNotFoundException(format(
+                        "Rota não encontrada com o ID: %s", viagem.getRota().toUUID())));
+        List<ParadaPrevista> paradasPrevistas = paradasDaRota(viagem, rota);
 
         viagem.iniciar(horarioPartida, paradasPrevistas);
         return repository.save(viagem).getId();
+    }
+
+    private List<ParadaPrevista> paradasDaRota(Viagem viagem, Rota rota) {
+        List<Endereco> enderecos = rota.getEnderecos() == null ? List.of() : rota.getEnderecos();
+        List<ParadaPrevista> previstas = new java.util.ArrayList<>();
+        for (int i = 0; i < enderecos.size(); i++) {
+            previstas.add(ParadaPrevista.builder()
+                    .ordem(i + 1)
+                    .horarioPrevisto(viagem.getData())
+                    .quantidadeAlunos(viagem.getPassageiros().size())
+                    .build());
+        }
+        return previstas;
     }
 
     @NonNull
