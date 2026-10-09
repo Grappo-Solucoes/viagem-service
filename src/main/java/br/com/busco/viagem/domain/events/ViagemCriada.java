@@ -2,13 +2,14 @@ package br.com.busco.viagem.domain.events;
 
 import br.com.busco.viagem.sk.ddd.DomainEvent;
 import br.com.busco.viagem.sk.ids.ViagemId;
-import br.com.busco.viagem.sk.ids.AlunoId;
 import br.com.busco.viagem.domain.Viagem;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.Instant;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Data
 @Builder
@@ -19,10 +20,13 @@ import java.util.Set;
 public class ViagemCriada implements DomainEvent {
     @NotNull(message = "O parâmetro 'id' é obrigatório!")
     private ViagemId id;
-    private Set<AlunoId> passageiros;
+    private Set<UUID> passageiros;
     private Instant occurredOn;
 
     public static ViagemCriada from(Viagem viagem) {
-        return new ViagemCriada(viagem.getId(), Set.of(), Instant.now());
+        Set<UUID> passageiros = viagem.getPassageiros().stream()
+                .map(p -> p.getPassageiroId())
+                .collect(Collectors.toSet());
+        return new ViagemCriada(viagem.getId(), passageiros, Instant.now());
     }
 }

@@ -98,11 +98,8 @@ public class ViagemProgramadaScheduler {
             TenantContext.set(viagemProgramada.tenantId());
 
             CriarViagem cmd = CriarViagem.builder()
-                    .viagem(viagemProgramada.id())
+                    .data(horarioInicio)
                     .rota(viagemProgramada.rota())
-                    .horarioInicio(horarioInicio)
-                    .horarioFim(horarioInicio.plusMinutes(duracaoPadraoMinutos))
-                    .dataViagem(data)
                     .build();
 
             viagemService.handle(cmd);

@@ -1,13 +1,39 @@
 package br.com.busco.viagem.domain;
 
-import br.com.busco.viagem.domain.events.*;
+import br.com.busco.viagem.domain.events.AtrasoCritico;
+import br.com.busco.viagem.domain.events.ChegadaParada;
+import br.com.busco.viagem.domain.events.ParadaForaDeSequenciaEvent;
+import br.com.busco.viagem.domain.events.ParadasPendentes;
+import br.com.busco.viagem.domain.events.SaidaParada;
+import br.com.busco.viagem.domain.events.ViagemCancelada;
+import br.com.busco.viagem.domain.events.ViagemCriada;
+import br.com.busco.viagem.domain.events.ViagemFinalizada;
+import br.com.busco.viagem.domain.events.ViagemIniciada;
+import br.com.busco.viagem.domain.events.ViagemPausada;
+import br.com.busco.viagem.domain.events.ViagemRetomada;
 import br.com.busco.viagem.infra.DurationConverter;
 import br.com.busco.viagem.sk.ddd.AbstractAggregateRoot;
 import br.com.busco.viagem.sk.ids.RotaId;
 import br.com.busco.viagem.sk.ids.ViagemId;
-import br.com.busco.viagem.sk.ids.ViagemPlanejadaId;
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -15,24 +41,56 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static br.com.busco.viagem.sk.ids.ViagemId.randomId;
 
+/**
+ * Agregado de execução de viagem. Referencia rota, motorista, monitor,
+ * veículo e planejamento só por id (sem entidades JPA cruzadas, sem FK
+ * externa); passageiros esperados são {@link Passageiro} (snapshot) e os
+ * embarques são {@link EmbarqueRegistro} embutidos. Sem listas de
+ * ausência/ocorrência/métrica (outros contextos).
+ */
 @Entity
 @Table(name = "viagens_execucao")
 @Getter
-@EqualsAndHashCode(of = {"viagemPlanejada"}, callSuper = true)
+@EqualsAndHashCode(of = {"rota", "data"}, callSuper = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public final class Viagem extends AbstractAggregateRoot<ViagemId> {
+public class Viagem extends AbstractAggregateRoot<ViagemId> {
 
-    @Embedded
-    @AttributeOverride(name = "uuid", column = @Column(name = "viagem_planejada_id", nullable = false))
-    private ViagemPlanejadaId viagemPlanejada;
+    @Column(nullable = false)
+    private LocalDateTime data;
+
+    @Column(name = "codigo_viagem")
+    private String codigoViagem;
 
     @Embedded
     @AttributeOverride(name = "uuid", column = @Column(name = "rota_id", nullable = false))
     private RotaId rota;
+
+    @Column(name = "motorista_id", nullable = false)
+    private UUID motoristaId;
+
+    @Column(name = "monitor_id", nullable = false)
+    private UUID monitorId;
+
+    @Column(name = "veiculo_id", nullable = false)
+    private UUID veiculoId;
+
+    @Column(name = "planejamento_id")
+    private UUID planejamentoId;
+
+    @ElementCollection
+    @CollectionTable(name = "viagem_passageiros", joinColumns = @JoinColumn(name = "viagem_id"))
+    private List<Passageiro> passageiros = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "viagem_embarques", joinColumns = @JoinColumn(name = "viagem_id"))
+    private List<EmbarqueRegistro> embarques = new ArrayList<>();
 
     @Embedded
     private PeriodoViagem periodoViagem;
@@ -43,41 +101,52 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "viagem", orphanRemoval = true)
     @OrderBy("ordem ASC")
-    private List<ParadaExecucao> paradas;
+    private List<ParadaExecucao> paradas = new ArrayList<>();
 
-    @Column(nullable = false)
-    private LocalDate dataViagem;
+    @Column(name = "data_inicio")
+    private LocalDateTime dataInicio;
+
+    @Column(name = "data_fim")
+    private LocalDateTime dataFim;
 
     @Convert(converter = DurationConverter.class)
     private Duration atrasoAcumulado;
 
     @Builder
-    private Viagem(ViagemPlanejadaId viagemPlanejada,
-                   RotaId rota,
-                   PeriodoViagem periodoViagem,
-                   LocalDate dataViagem) {
+    private Viagem(LocalDateTime data, RotaId rota, UUID motoristaId, UUID monitorId,
+                   UUID veiculoId, UUID planejamentoId, List<Passageiro> passageiros,
+                   PeriodoViagem periodoViagem, String codigoViagem) {
         super(randomId());
-        this.viagemPlanejada = viagemPlanejada;
-        this.rota = rota;
+        this.data = Objects.requireNonNull(data, "A data da viagem é obrigatória");
+        this.rota = Objects.requireNonNull(rota, "A rota da viagem é obrigatória");
+        this.motoristaId = Objects.requireNonNull(motoristaId, "O motorista da viagem é obrigatório");
+        this.monitorId = Objects.requireNonNull(monitorId, "O monitor da viagem é obrigatório");
+        this.veiculoId = Objects.requireNonNull(veiculoId, "O veículo da viagem é obrigatório");
+        this.planejamentoId = planejamentoId;
+        this.passageiros = passageiros != null ? new ArrayList<>(passageiros) : new ArrayList<>();
+        this.embarques = new ArrayList<>();
         this.periodoViagem = periodoViagem;
-        this.status = Status.PENDENTE;
-        this.dataViagem = dataViagem;
+        this.codigoViagem = codigoViagem;
+        this.status = Status.PLANEJADA;
         this.paradas = new ArrayList<>();
         this.atrasoAcumulado = Duration.ZERO;
 
         registerEvent(ViagemCriada.from(this));
     }
 
+    // ------------------------------------------------------------------
+    // Ciclo de vida
+    // ------------------------------------------------------------------
+
     public void iniciar(LocalDateTime horarioReal, List<ParadaPrevista> paradasPrevistas) {
-        if (status != Status.PENDENTE) {
-            throw new IllegalStateException("Viagem já foi iniciada");
-        }
-        if (LocalDate.now().isAfter(dataViagem)) {
+        this.status = status.iniciar();
+        if (LocalDate.now().isAfter(data.toLocalDate())) {
             throw new IllegalStateException("Viagem não pode ser iniciada após a data");
         }
-
-        this.status = Status.EM_ANDAMENTO;
-        this.periodoViagem = periodoViagem.withInicioReal(horarioReal);
+        this.dataInicio = horarioReal;
+        if (periodoViagem != null) {
+            this.periodoViagem = periodoViagem.withInicioReal(horarioReal);
+        }
 
         this.paradas = paradasPrevistas.stream()
                 .map(pp -> ParadaExecucao.builder()
@@ -90,13 +159,40 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
         registerEvent(ViagemIniciada.from(this, horarioReal));
     }
 
+    public void finalizar(LocalDateTime horarioFinalizacao) {
+        this.status = status.finalizar();
+        this.dataFim = horarioFinalizacao;
+        if (periodoViagem != null) {
+            this.periodoViagem = periodoViagem.withFimReal(horarioFinalizacao);
+        }
+        validarTodasParadasConcluidas();
+
+        registerEvent(ViagemFinalizada.from(this, horarioFinalizacao));
+    }
+
+    public void cancelar() {
+        this.status = status.cancelar();
+        registerEvent(ViagemCancelada.from(this));
+    }
+
+    public void pausar() {
+        this.status = status.pausar();
+        registerEvent(ViagemPausada.from(this));
+    }
+
+    public void retomar() {
+        this.status = status.retomar();
+        registerEvent(ViagemRetomada.from(this));
+    }
+
+    // ------------------------------------------------------------------
+    // Paradas e atraso
+    // ------------------------------------------------------------------
+
     public void registrarChegadaParada(int ordem, LocalDateTime horarioChegada) {
         ParadaExecucao parada = getParadaPorOrdem(ordem);
         parada.registrarChegada(horarioChegada, ordem);
-
-        if (isUltimaParada(ordem)) {
-            this.status = Status.PENDENTE;
-        }
+        detectarDesvioSequencia(parada);
 
         registerEvent(ChegadaParada.from(this, ordem, horarioChegada));
     }
@@ -107,34 +203,6 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
         registerEvent(SaidaParada.from(this, ordem, horarioSaida));
     }
 
-    public void finalizar(LocalDateTime horarioFinalizacao) {
-        if (status != Status.EM_ANDAMENTO && status != Status.PENDENTE){
-            throw new IllegalStateException("Só pode finalizar viagem em andamento");
-        }
-
-        this.status = Status.CONCLUIDA;
-        this.periodoViagem = periodoViagem.withFimReal(horarioFinalizacao);
-        validarTodasParadasConcluidas();
-
-        registerEvent(ViagemFinalizada.from(this, horarioFinalizacao));
-    }
-
-    public void pausar() {
-        if (status != Status.EM_ANDAMENTO) {
-            throw new IllegalStateException("Só pode pausar viagem em andamento");
-        }
-        this.status = Status.PAUSADA;
-        registerEvent(ViagemPausada.from(this));
-    }
-
-    public void retomar() {
-        if (status != Status.PAUSADA) {
-            throw new IllegalStateException("Só pode retomar viagem pausada");
-        }
-        this.status = Status.EM_ANDAMENTO;
-        registerEvent(ViagemRetomada.from(this));
-    }
-
     public void registrarAtrasoDetectado(Duration atraso) {
         this.atrasoAcumulado = atraso;
 
@@ -143,31 +211,61 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
         }
     }
 
-    public void cancelar() {
-        this.status = Status.CANCELADA;
-        registerEvent(ViagemCancelada.from(this));
+    // ------------------------------------------------------------------
+    // Passageiros esperados (snapshot)
+    // ------------------------------------------------------------------
+
+    /** Esperados ativos; viagem planejada filtra inativos (monólito). */
+    public List<Passageiro> getPassageiros() {
+        return passageiros.stream()
+                .filter(p -> p.getPassageiroId() != null)
+                .filter(p -> this.status != Status.PLANEJADA || p.isAtivo())
+                .sorted(Comparator.comparing(Passageiro::getPassageiroId))
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
+    public Optional<Passageiro> encontrarPassageiroPorId(UUID passageiroId) {
+        return passageiros.stream()
+                .filter(p -> passageiroId.equals(p.getPassageiroId()))
+                .findFirst();
+    }
+
+    /**
+     * Procura entre os esperados aquele cujos dados (lidos do texto bruto da
+     * carteirinha/QR) correspondem — mesma regra do monólito: nome obrigatório,
+     * turno/escola/matrícula desempatam.
+     */
+    public Optional<Passageiro> encontrarPassageiroPorCarteirinha(Carteirinha carteirinha) {
+        return passageiros.stream()
+                .filter(p -> p.nomeConfereComCarteirinha(carteirinha))
+                .max(Comparator.comparingInt(p -> p.pontosQueConferemComCarteirinha(carteirinha)));
+    }
+
+    public boolean isEmAndamento() {
+        return status == Status.INICIADA;
+    }
+
+    public boolean isAtrasada() {
+        return atrasoAcumulado != null && atrasoAcumulado.toMinutes() > 5;
+    }
+
+    public boolean isDataOcupada(Viagem outra) {
+        return this.data.equals(outra.data);
+    }
+
+    // ------------------------------------------------------------------
 
     private void detectarDesvioSequencia(ParadaExecucao parada) {
-
-        boolean existeAnteriorPendente =
-                paradas.stream()
-                        .anyMatch(p ->
-                                p.getOrdem() < parada.getOrdem()
-                                        && p.isPendente()
-                        );
-
+        boolean existeAnteriorPendente = paradas.stream()
+                .anyMatch(p -> p.getOrdem() < parada.getOrdem() && p.isPendente());
         if (existeAnteriorPendente) {
             registerEvent(ParadaForaDeSequenciaEvent.from(this, parada));
         }
     }
 
-
     private void validarTodasParadasConcluidas() {
         boolean todasConcluidas = paradas.stream()
                 .allMatch(p -> p.getStatus() == StatusParada.CONCLUIDA);
-
         if (!todasConcluidas) {
             registerEvent(ParadasPendentes.from(this, paradas.stream()
                     .filter(p -> p.getStatus() != StatusParada.CONCLUIDA)
@@ -181,19 +279,5 @@ public final class Viagem extends AbstractAggregateRoot<ViagemId> {
                 .filter(p -> p.getOrdem() == ordem)
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Parada " + ordem + " não encontrada"));
-    }
-
-    private boolean isUltimaParada(int ordem) {
-        return paradas.stream()
-                .mapToInt(ParadaExecucao::getOrdem)
-                .max()
-                .orElse(0) == ordem;
-    }
-    public boolean isEmAndamento() {
-        return status == Status.EM_ANDAMENTO;
-    }
-
-    public boolean isAtrasada() {
-        return atrasoAcumulado != null && atrasoAcumulado.toMinutes() > 5;
     }
 }

@@ -1,21 +1,35 @@
 package br.com.busco.viagem.app.cmd;
 
-import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+/** Payload igual ao {@code CriarViagem} do monólito. Checklist é aceito e ignorado (outro contexto). */
 @Data
 @Builder
-@Getter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CriarViagem {
+    @NotNull
+    private LocalDateTime data;
+    @NotNull
     private UUID rota;
-    private UUID viagem;
-    private LocalDateTime horarioInicio;
-    private LocalDateTime horarioFim;
-    private LocalDate dataViagem;
+    private List<UUID> alunos;
+    @NotNull
+    private UUID motorista;
+    @NotNull
+    private UUID monitor;
+    @NotNull
+    private UUID veiculo;
+    private UUID grupoChecklistInicial;
+    private UUID grupoChecklistFinal;
+    private UUID planejamento;
 }

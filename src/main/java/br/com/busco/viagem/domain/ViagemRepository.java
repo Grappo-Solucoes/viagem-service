@@ -1,22 +1,22 @@
 package br.com.busco.viagem.domain;
 
 import br.com.busco.viagem.sk.ids.ViagemId;
-import br.com.busco.viagem.sk.ids.ViagemPlanejadaId;
 import org.springframework.data.jpa.repository.Query;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface ViagemRepository {
     Viagem save(Viagem viagem);
     Optional<Viagem> findById(ViagemId id);
 
-    @Query("SELECT v FROM Viagem v WHERE v.status IN ('EM_ANDAMENTO', 'PAUSADA')")
+    @Query("SELECT v FROM Viagem v WHERE v.status IN ('INICIADA', 'PAUSADA')")
     List<Viagem> findAllEmAndamento();
 
-    Optional<Viagem> findByViagemPlanejada(ViagemPlanejadaId viagemPlanejadaId);
+    @Query("SELECT v FROM Viagem v WHERE v.data >= :inicio AND v.data < :fim AND v.status = 'PLANEJADA'")
+    List<Viagem> findViagensPlanejadasNoIntervalo(LocalDateTime inicio, LocalDateTime fim);
 
-    @Query("SELECT v FROM Viagem v WHERE v.dataViagem = :data AND v.status = 'PENDENTE'")
-    List<Viagem> findViagensPendentesDoDia(LocalDate data);
+    List<Viagem> findByMonitorIdAndStatusNot(UUID monitorId, Status status);
 }
