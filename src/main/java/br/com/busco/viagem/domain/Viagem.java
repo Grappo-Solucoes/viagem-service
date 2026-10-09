@@ -190,17 +190,42 @@ public class Viagem extends AbstractAggregateRoot<ViagemId> {
     // ------------------------------------------------------------------
 
     public void registrarChegadaParada(int ordem, LocalDateTime horarioChegada) {
+        registrarChegadaParada(ordem, horarioChegada, null, null);
+    }
+
+    public void registrarChegadaParada(int ordem, LocalDateTime horarioChegada,
+                                       Double latitude, Double longitude) {
+        if (status != Status.INICIADA) {
+            throw new IllegalStateException("Só pode registrar parada em viagem em andamento");
+        }
         ParadaExecucao parada = getParadaPorOrdem(ordem);
-        parada.registrarChegada(horarioChegada, ordem);
+        parada.registrarChegada(horarioChegada, ordem, latitude, longitude);
         detectarDesvioSequencia(parada);
+        acumularAtraso(parada.atrasoChegada());
 
         registerEvent(ChegadaParada.from(this, ordem, horarioChegada));
     }
 
     public void registrarSaidaParada(int ordem, LocalDateTime horarioSaida) {
+        registrarSaidaParada(ordem, horarioSaida, null, null);
+    }
+
+    public void registrarSaidaParada(int ordem, LocalDateTime horarioSaida,
+                                     Double latitude, Double longitude) {
+        if (status != Status.INICIADA) {
+            throw new IllegalStateException("Só pode registrar parada em viagem em andamento");
+        }
         ParadaExecucao parada = getParadaPorOrdem(ordem);
-        parada.registrarSaida(horarioSaida);
+        parada.registrarSaida(horarioSaida, latitude, longitude);
         registerEvent(SaidaParada.from(this, ordem, horarioSaida));
+    }
+
+    private void acumularAtraso(Duration atraso) {
+        if (atraso == null || atraso.isZero()) {
+            return;
+        }
+        Duration acumulado = atrasoAcumulado == null ? atraso : atrasoAcumulado.plus(atraso);
+        registrarAtrasoDetectado(acumulado);
     }
 
     public void registrarAtrasoDetectado(Duration atraso) {

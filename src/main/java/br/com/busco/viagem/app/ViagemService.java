@@ -90,7 +90,9 @@ public class ViagemService {
 
         viagem.registrarChegadaParada(
                 cmd.getOrdemParada(),
-                cmd.getHorarioChegada()
+                cmd.getHorarioChegada(),
+                cmd.getLatitude(),
+                cmd.getLongitude()
         );
 
         return repository.save(viagem).getId();
@@ -102,7 +104,9 @@ public class ViagemService {
 
         viagem.registrarSaidaParada(
                 cmd.getOrdemParada(),
-                cmd.getHorarioSaida()
+                cmd.getHorarioSaida(),
+                cmd.getLatitude(),
+                cmd.getLongitude()
         );
 
         return repository.save(viagem).getId();
