@@ -2,15 +2,20 @@ package br.com.busco.viagem.app;
 
 import br.com.busco.viagem.app.cmd.CancelarViagem;
 import br.com.busco.viagem.app.cmd.CriarViagem;
+import br.com.busco.viagem.app.cmd.DesembarcarAluno;
+import br.com.busco.viagem.app.cmd.EmbarcarAluno;
+import br.com.busco.viagem.app.cmd.EmbarcarTodos;
 import br.com.busco.viagem.app.cmd.FinalizarViagem;
 import br.com.busco.viagem.app.cmd.IniciarViagem;
 import br.com.busco.viagem.app.cmd.RegistrarChegadaParada;
 import br.com.busco.viagem.app.cmd.RegistrarSaidaParada;
+import br.com.busco.viagem.domain.Carteirinha;
 import br.com.busco.viagem.domain.Passageiro;
 import br.com.busco.viagem.domain.PeriodoViagem;
 import br.com.busco.viagem.domain.RotaRepository;
 import br.com.busco.viagem.domain.Viagem;
 import br.com.busco.viagem.domain.ViagemRepository;
+import br.com.busco.viagem.infra.exceptions.runtime.ObjectNotFoundException;
 import br.com.busco.viagem.sk.ids.RotaId;
 import br.com.busco.viagem.sk.ids.ViagemId;
 import jakarta.persistence.EntityNotFoundException;
@@ -24,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
+import java.util.UUID;
 
 import static jakarta.persistence.LockModeType.PESSIMISTIC_READ;
 import static java.lang.String.format;
@@ -117,6 +123,69 @@ public class ViagemService {
         Viagem viagem = buscarPorId(ViagemId.fromString(cmd.getId().toString()));
         viagem.finalizar(cmd.getHorarioFinalizacao());
         return repository.save(viagem).getId();
+    }
+
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public EmbarcarAlunoResultado handle(@NonNull @Valid EmbarcarAluno cmd) {
+        Viagem viagem = buscarPorId(ViagemId.fromString(cmd.getId().toString()));
+
+        Passageiro passageiro = encontrarPassageiro(viagem, cmd.getAluno());
+        viagem.embarcarPassageiro(passageiro, cmd.getLatitude(), cmd.getLongitude(),
+                cmd.getJustificativa());
+
+        UUID viagemId = UUID.fromString(repository.save(viagem).getId().toUUID());
+        return new EmbarcarAlunoResultado(viagemId, passageiro.getPassageiroId(), passageiro.getNome());
+    }
+
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public EmbarcarTodosResultado handle(@NonNull @Valid EmbarcarTodos cmd) {
+        Viagem viagem = buscarPorId(ViagemId.fromString(cmd.getId().toString()));
+
+        var embarcados = viagem.embarcarTodosPendentes();
+        UUID viagemId = UUID.fromString(repository.save(viagem).getId().toUUID());
+
+        return new EmbarcarTodosResultado(viagemId, embarcados.stream()
+                .map(p -> new EmbarcarAlunoResultado(viagemId, p.getPassageiroId(), p.getNome()))
+                .toList());
+    }
+
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public EmbarcarAlunoResultado handle(@NonNull @Valid DesembarcarAluno cmd) {
+        Viagem viagem = buscarPorId(ViagemId.fromString(cmd.getId().toString()));
+
+        Passageiro passageiro = encontrarPassageiro(viagem, cmd.getAluno());
+        viagem.desembarcarPassageiro(passageiro.getPassageiroId(),
+                cmd.getLatitude(), cmd.getLongitude());
+
+        UUID viagemId = UUID.fromString(repository.save(viagem).getId().toUUID());
+        return new EmbarcarAlunoResultado(viagemId, passageiro.getPassageiroId(), passageiro.getNome());
+    }
+
+    private Passageiro encontrarPassageiro(Viagem viagem, String codigo) {
+        if (codigo == null || codigo.isEmpty()) {
+            throw new ObjectNotFoundException("Carteirinha do aluno não informada.");
+        }
+
+        if (codigo.contains(";")) {
+            Carteirinha carteirinha = Carteirinha.of(codigo);
+            return viagem.encontrarPassageiroPorCarteirinha(carteirinha)
+                    .orElseThrow(() -> new ObjectNotFoundException(
+                            format("Aluno '%s' não encontrado.", carteirinha.nome())));
+        }
+
+        try {
+            UUID passageiroId = UUID.fromString(codigo);
+            return viagem.encontrarPassageiroPorId(passageiroId)
+                    .orElseGet(() -> Passageiro.comId(passageiroId));
+        } catch (IllegalArgumentException e) {
+            Carteirinha carteirinha = Carteirinha.of(codigo);
+            return viagem.encontrarPassageiroPorCarteirinha(carteirinha)
+                    .orElseThrow(() -> new ObjectNotFoundException(
+                            format("Aluno '%s' não encontrado.", codigo)));
+        }
     }
 
     @NonNull

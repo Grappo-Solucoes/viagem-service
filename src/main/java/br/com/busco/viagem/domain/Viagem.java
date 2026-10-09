@@ -1,5 +1,6 @@
 package br.com.busco.viagem.domain;
 
+import br.com.busco.viagem.domain.events.AlunoEmbarcado;
 import br.com.busco.viagem.domain.events.AtrasoCritico;
 import br.com.busco.viagem.domain.events.ChegadaParada;
 import br.com.busco.viagem.domain.events.ParadaForaDeSequenciaEvent;
@@ -276,6 +277,78 @@ public class Viagem extends AbstractAggregateRoot<ViagemId> {
 
     public boolean isDataOcupada(Viagem outra) {
         return this.data.equals(outra.data);
+    }
+
+    // ------------------------------------------------------------------
+    // Embarque / desembarque (regras do monólito, sem Aluno entidade)
+    // ------------------------------------------------------------------
+
+    /** Passageiros com desembarque ainda não registrado (a bordo agora). */
+    public List<Passageiro> getPassageirosABordo() {
+        List<UUID> aBordo = embarques.stream()
+                .filter(EmbarqueRegistro::estaEmbarcado)
+                .map(EmbarqueRegistro::getPassageiroId)
+                .toList();
+        return passageiros.stream()
+                .filter(p -> aBordo.contains(p.getPassageiroId()))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    public List<EmbarqueRegistro> getRegistrosEmbarque() {
+        return List.copyOf(embarques);
+    }
+
+    public void embarcarPassageiro(Passageiro passageiro, Double latitude, Double longitude,
+                                   String justificativa) {
+        Objects.requireNonNull(passageiro, "O passageiro é obrigatório");
+        boolean planejado = passageiros.contains(passageiro);
+        String justificativaNormalizada = justificativa == null ? null : justificativa.trim();
+        if (!planejado && (justificativaNormalizada == null || justificativaNormalizada.isEmpty())) {
+            throw new IllegalArgumentException(
+                    "A justificativa é obrigatória para embarcar um passageiro não planejado.");
+        }
+        if (justificativaNormalizada != null && justificativaNormalizada.length() > 500) {
+            throw new IllegalArgumentException("A justificativa deve ter no máximo 500 caracteres.");
+        }
+        boolean jaEmbarcado = embarques.stream()
+                .anyMatch(r -> r.getPassageiroId().equals(passageiro.getPassageiroId())
+                        && r.estaEmbarcado());
+        if (jaEmbarcado) {
+            return;
+        }
+        embarques.add(new EmbarqueRegistro(passageiro.getPassageiroId(), passageiro.getNome(),
+                latitude, longitude, planejado, planejado ? null : justificativaNormalizada));
+        registerEvent(AlunoEmbarcado.of(this, passageiro));
+    }
+
+    /** Embarca todos os esperados que ainda não embarcaram. */
+    public List<Passageiro> embarcarTodosPendentes() {
+        List<Passageiro> embarcados = new ArrayList<>();
+        for (Passageiro passageiro : getPassageiros()) {
+            boolean pendente = embarques.stream()
+                    .noneMatch(r -> r.getPassageiroId().equals(passageiro.getPassageiroId())
+                            && r.estaEmbarcado());
+            if (pendente) {
+                embarcarPassageiro(passageiro, null, null, null);
+                embarcados.add(passageiro);
+            }
+        }
+        return embarcados;
+    }
+
+    public void desembarcarPassageiro(UUID passageiroId, Double latitude, Double longitude) {
+        boolean esperado = passageiros.stream()
+                .anyMatch(p -> p.getPassageiroId().equals(passageiroId));
+        if (!esperado) {
+            throw new IllegalStateException("Passageiro não está nessa viagem");
+        }
+        EmbarqueRegistro ativo = embarques.stream()
+                .filter(r -> r.getPassageiroId().equals(passageiroId) && r.estaEmbarcado())
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Passageiro não está embarcado nessa viagem"));
+
+        embarques.remove(ativo);
+        embarques.add(ativo.comDesembarque(latitude, longitude));
     }
 
     // ------------------------------------------------------------------
