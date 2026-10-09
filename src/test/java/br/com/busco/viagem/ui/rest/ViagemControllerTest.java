@@ -284,6 +284,23 @@ class ViagemControllerTest {
     }
 
     @Test
+    void deveEmbarcarFantasmaPorCarteirinhaComJustificativa() throws Exception {
+        UUID id = criarViagem();
+
+        mvc.perform(patch("/api/viagem/" + id + "/embarcar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"aluno":"ZÉ NINGUÉM;999;1 - MANHA;ESCOLA X"}"""))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(patch("/api/viagem/" + id + "/embarcar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"aluno":"ZÉ NINGUÉM;999;1 - MANHA;ESCOLA X","justificativa":"aluno transferido hoje"}"""))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void deveEditarRota() throws Exception {
         mvc.perform(put("/api/viagem/rota/" + rotaId)
                         .contentType(MediaType.APPLICATION_JSON)

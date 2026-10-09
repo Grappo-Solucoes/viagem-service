@@ -148,10 +148,10 @@ public class Viagem extends AbstractAggregateRoot<ViagemId> {
     // ------------------------------------------------------------------
 
     public void iniciar(LocalDateTime horarioReal, List<ParadaPrevista> paradasPrevistas) {
-        this.status = status.iniciar();
         if (LocalDate.now().isAfter(data.toLocalDate())) {
             throw new IllegalStateException("Viagem não pode ser iniciada após a data");
         }
+        this.status = status.iniciar();
         this.dataInicio = horarioReal;
         if (periodoViagem != null) {
             this.periodoViagem = periodoViagem.withInicioReal(horarioReal);

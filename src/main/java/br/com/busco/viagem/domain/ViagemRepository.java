@@ -11,6 +11,7 @@ import java.util.UUID;
 public interface ViagemRepository {
     Viagem save(Viagem viagem);
     Optional<Viagem> findById(ViagemId id);
+    Optional<Viagem> findByIdForUpdate(ViagemId id);
 
     @Query("SELECT v FROM Viagem v WHERE v.status IN ('INICIADA', 'PAUSADA')")
     List<Viagem> findAllEmAndamento();

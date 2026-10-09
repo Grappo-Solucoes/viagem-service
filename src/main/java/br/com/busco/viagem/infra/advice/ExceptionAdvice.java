@@ -4,6 +4,7 @@ import br.com.busco.viagem.infra.exceptions.runtime.ConflictException;
 import br.com.busco.viagem.infra.exceptions.runtime.ForbiddenException;
 import br.com.busco.viagem.infra.exceptions.runtime.ObjectNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +17,7 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @ControllerAdvice(annotations = RestController.class)
+@Slf4j
 public class ExceptionAdvice {
 
     @ExceptionHandler({EntityNotFoundException.class, ObjectNotFoundException.class})
@@ -46,7 +48,7 @@ public class ExceptionAdvice {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionResponse> handler(Exception exception) {
-        exception.printStackTrace();
+        log.error("Erro não tratado", exception);
         return ResponseEntity.status(INTERNAL_SERVER_ERROR)
                 .body(ExceptionResponse.from(exception));
     }

@@ -205,7 +205,7 @@ public class ViagemService {
         if (!ehMonitor || monitorId == null) {
             throw new ForbiddenException("Apenas monitores podem assumir viagens");
         }
-        Viagem viagem = repository.findById(ViagemId.fromString(viagemId.toString()))
+        Viagem viagem = repository.findByIdForUpdate(ViagemId.fromString(viagemId.toString()))
                 .orElseThrow(() -> new ObjectNotFoundException("Viagem não encontrada"));
 
         if (viagem.getStatus() != Status.PLANEJADA) {
@@ -240,9 +240,11 @@ public class ViagemService {
 
         if (codigo.contains(";")) {
             Carteirinha carteirinha = Carteirinha.of(codigo);
+            // Sem acesso ao cadastro global (D7): desconhecido vira fantasma com
+            // o nome da carteirinha; a regra da justificativa decide 200 vs 400.
             return viagem.encontrarPassageiroPorCarteirinha(carteirinha)
-                    .orElseThrow(() -> new ObjectNotFoundException(
-                            format("Aluno '%s' não encontrado.", carteirinha.nome())));
+                    .orElseGet(() -> Passageiro.of(UUID.randomUUID(), carteirinha.nome(),
+                            null, null, null, null, true));
         }
 
         try {
@@ -252,8 +254,8 @@ public class ViagemService {
         } catch (IllegalArgumentException e) {
             Carteirinha carteirinha = Carteirinha.of(codigo);
             return viagem.encontrarPassageiroPorCarteirinha(carteirinha)
-                    .orElseThrow(() -> new ObjectNotFoundException(
-                            format("Aluno '%s' não encontrado.", codigo)));
+                    .orElseGet(() -> Passageiro.of(UUID.randomUUID(), codigo,
+                            null, null, null, null, true));
         }
     }
 

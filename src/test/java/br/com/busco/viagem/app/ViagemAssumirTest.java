@@ -58,7 +58,7 @@ class ViagemAssumirTest {
                 .periodoViagem(PeriodoViagem.of(
                         LocalDateTime.now(), LocalDateTime.now().plusHours(1)))
                 .build();
-        lenient().when(repository.findById(any(ViagemId.class))).thenReturn(Optional.of(viagem));
+        lenient().when(repository.findByIdForUpdate(any(ViagemId.class))).thenReturn(Optional.of(viagem));
         lenient().when(repository.save(any(Viagem.class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(repository.findByMonitorIdAndStatusNot(any(), any())).thenReturn(List.of());
     }
@@ -83,7 +83,7 @@ class ViagemAssumirTest {
 
     @Test
     void deveRetornar404QuandoViagemNaoExiste() {
-        when(repository.findById(any(ViagemId.class))).thenReturn(Optional.empty());
+        when(repository.findByIdForUpdate(any(ViagemId.class))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.assumirViagem(
                 UUID.randomUUID(), UUID.randomUUID(), true))
@@ -109,7 +109,7 @@ class ViagemAssumirTest {
                 .monitorId(monitorAtual)
                 .veiculoId(UUID.randomUUID())
                 .build();
-        when(repository.findById(any(ViagemId.class))).thenReturn(Optional.of(passada));
+        when(repository.findByIdForUpdate(any(ViagemId.class))).thenReturn(Optional.of(passada));
 
         assertThatThrownBy(() -> service.assumirViagem(
                 UUID.fromString(passada.getId().toUUID()), UUID.randomUUID(), true))
