@@ -3,7 +3,6 @@ package br.com.busco.viagem.domain;
 import br.com.busco.viagem.sk.ids.RotaId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -131,5 +130,51 @@ class ViagemEmbarqueTest {
         assertThatThrownBy(() -> viagem.desembarcarPassageiro(UUID.randomUUID(), null, null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("nessa viagem");
+    }
+
+    @Test
+    void devePublicarFaltasDosNaoEmbarcadosAoFinalizar() {
+        viagem.embarcarPassageiro(maria, null, null, null);
+
+        viagem.finalizar(LocalDateTime.now());
+
+        List<br.com.busco.viagem.domain.events.FaltaSemJustificativa> faltas =
+                EventosHelper.eventosDe(viagem).stream()
+                        .filter(br.com.busco.viagem.domain.events.FaltaSemJustificativa.class::isInstance)
+                        .map(br.com.busco.viagem.domain.events.FaltaSemJustificativa.class::cast)
+                        .toList();
+        assertThat(faltas).hasSize(1);
+        assertThat(faltas.get(0).getPassageiros())
+                .extracting(p -> p.getId())
+                .containsExactly(joao.getPassageiroId());
+    }
+
+    @Test
+    void naoDevePublicarFaltaQuandoTodosEmbarcaram() {
+        viagem.embarcarTodosPendentes();
+
+        viagem.finalizar(LocalDateTime.now());
+
+        assertThat(EventosHelper.eventosDe(viagem).stream()
+                .filter(br.com.busco.viagem.domain.events.FaltaSemJustificativa.class::isInstance))
+                .isEmpty();
+    }
+
+    @Test
+    void desembarcadoNaoContaComoFalta() {
+        viagem.embarcarPassageiro(maria, null, null, null);
+        viagem.desembarcarPassageiro(maria.getPassageiroId(), null, null);
+
+        viagem.finalizar(LocalDateTime.now());
+
+        List<br.com.busco.viagem.domain.events.FaltaSemJustificativa> faltas =
+                EventosHelper.eventosDe(viagem).stream()
+                        .filter(br.com.busco.viagem.domain.events.FaltaSemJustificativa.class::isInstance)
+                        .map(br.com.busco.viagem.domain.events.FaltaSemJustificativa.class::cast)
+                        .toList();
+        assertThat(faltas).hasSize(1);
+        assertThat(faltas.get(0).getPassageiros())
+                .extracting(p -> p.getId())
+                .containsExactly(joao.getPassageiroId());
     }
 }

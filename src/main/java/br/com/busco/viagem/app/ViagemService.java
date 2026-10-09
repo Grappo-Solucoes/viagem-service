@@ -13,8 +13,11 @@ import br.com.busco.viagem.domain.Carteirinha;
 import br.com.busco.viagem.domain.Passageiro;
 import br.com.busco.viagem.domain.PeriodoViagem;
 import br.com.busco.viagem.domain.RotaRepository;
+import br.com.busco.viagem.domain.Status;
 import br.com.busco.viagem.domain.Viagem;
 import br.com.busco.viagem.domain.ViagemRepository;
+import br.com.busco.viagem.infra.exceptions.runtime.ConflictException;
+import br.com.busco.viagem.infra.exceptions.runtime.ForbiddenException;
 import br.com.busco.viagem.infra.exceptions.runtime.ObjectNotFoundException;
 import br.com.busco.viagem.sk.ids.RotaId;
 import br.com.busco.viagem.sk.ids.ViagemId;
@@ -28,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -164,8 +168,46 @@ public class ViagemService {
         return new EmbarcarAlunoResultado(viagemId, passageiro.getPassageiroId(), passageiro.getNome());
     }
 
-    private Passageiro encontrarPassageiro(Viagem viagem, String codigo) {
-        if (codigo == null || codigo.isEmpty()) {
+    /**
+     * Monitor autenticado assume a viagem planejada. Erros espelham o monólito:
+     * 403 se não é monitor, 404 se a viagem não existe, 409 se indisponível
+     * ou em conflito de horário.
+     */
+    @NonNull
+    public ViagemId assumirViagem(@NonNull UUID viagemId, UUID monitorId, boolean ehMonitor) {
+        if (!ehMonitor || monitorId == null) {
+            throw new ForbiddenException("Apenas monitores podem assumir viagens");
+        }
+        Viagem viagem = repository.findById(ViagemId.fromString(viagemId.toString()))
+                .orElseThrow(() -> new ObjectNotFoundException("Viagem não encontrada"));
+
+        if (viagem.getStatus() != Status.PLANEJADA) {
+            throw new ConflictException("A viagem não está mais disponível para ser assumida");
+        }
+        if (viagem.getData().isBefore(LocalDateTime.now())) {
+            throw new ConflictException("Não é possível assumir uma viagem com horário passado");
+        }
+        if (monitorId.equals(viagem.getMonitorId())) {
+            return viagem.getId();
+        }
+
+        boolean emConflito = repository.findByMonitorIdAndStatusNot(
+                        monitorId, Status.CANCELADA).stream()
+                .filter(outra -> !outra.getId().equals(viagem.getId()))
+                .anyMatch(viagem::isDataOcupada);
+        if (emConflito) {
+            throw new ConflictException("O monitor já possui uma viagem neste horário");
+        }
+
+        try {
+            viagem.assumir(monitorId);
+        } catch (IllegalStateException e) {
+            throw new ConflictException(e.getMessage(), e);
+        }
+        return repository.save(viagem).getId();
+    }
+
+    private Passageiro encontrarPassageiro(Viagem viagem, String codigo) {        if (codigo == null || codigo.isEmpty()) {
             throw new ObjectNotFoundException("Carteirinha do aluno não informada.");
         }
 

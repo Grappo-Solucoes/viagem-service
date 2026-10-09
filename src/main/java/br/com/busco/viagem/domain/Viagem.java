@@ -2,6 +2,9 @@ package br.com.busco.viagem.domain;
 
 import br.com.busco.viagem.domain.events.AlunoEmbarcado;
 import br.com.busco.viagem.domain.events.AtrasoCritico;
+import br.com.busco.viagem.domain.events.FaltaSemJustificativa;
+import br.com.busco.viagem.domain.events.MonitorAtribuido;
+import br.com.busco.viagem.domain.events.MonitorRemovido;
 import br.com.busco.viagem.domain.events.ChegadaParada;
 import br.com.busco.viagem.domain.events.ParadaForaDeSequenciaEvent;
 import br.com.busco.viagem.domain.events.ParadasPendentes;
@@ -169,6 +172,40 @@ public class Viagem extends AbstractAggregateRoot<ViagemId> {
         validarTodasParadasConcluidas();
 
         registerEvent(ViagemFinalizada.from(this, horarioFinalizacao));
+
+        List<Passageiro> faltantes = passageirosNaoEmbarcados();
+        if (!faltantes.isEmpty()) {
+            registerEvent(FaltaSemJustificativa.of(this, faltantes));
+        }
+    }
+
+    /**
+     * Esperados que nunca embarcaram (mesmo que tenham desembarcado depois,
+     * contam como presentes — regra do monólito). Sem ausência: só
+     * embarcados vs esperados.
+     */
+    public List<Passageiro> passageirosNaoEmbarcados() {
+        List<UUID> embarcaram = embarques.stream()
+                .map(EmbarqueRegistro::getPassageiroId)
+                .toList();
+        return getPassageiros().stream()
+                .filter(p -> !embarcaram.contains(p.getPassageiroId()))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    public void assumir(UUID novoMonitorId) {
+        Objects.requireNonNull(novoMonitorId, "O monitor é obrigatório");
+        if (status != Status.PLANEJADA) {
+            throw new IllegalStateException("Somente viagens planejadas podem ser assumidas");
+        }
+        if (novoMonitorId.equals(this.monitorId)) {
+            return;
+        }
+        if (this.monitorId != null) {
+            registerEvent(MonitorRemovido.of(getId()));
+        }
+        this.monitorId = novoMonitorId;
+        registerEvent(MonitorAtribuido.of(getId()));
     }
 
     public void cancelar() {
