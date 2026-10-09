@@ -48,7 +48,8 @@ class ViagemAssumirTest {
 
     @BeforeEach
     void setUp() {
-        service = new ViagemService(repository, rotaRepository, rotaGateway);
+        service = new ViagemService(repository, rotaRepository, rotaGateway,
+                new com.fasterxml.jackson.databind.ObjectMapper());
         monitorAtual = UUID.randomUUID();
         viagem = Viagem.builder()
                 .data(LocalDateTime.now().plusDays(1))

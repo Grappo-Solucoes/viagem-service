@@ -1,6 +1,9 @@
 package br.com.busco.viagem.app;
 
+import br.com.busco.viagem.app.cmd.AtualizarRota;
+import br.com.busco.viagem.app.cmd.AtualizarViagem;
 import br.com.busco.viagem.app.cmd.CancelarViagem;
+import br.com.busco.viagem.app.cmd.CriarRota;
 import br.com.busco.viagem.app.cmd.CriarViagem;
 import br.com.busco.viagem.app.cmd.DesembarcarAluno;
 import br.com.busco.viagem.app.cmd.EmbarcarAluno;
@@ -10,8 +13,10 @@ import br.com.busco.viagem.app.cmd.IniciarViagem;
 import br.com.busco.viagem.app.cmd.RegistrarChegadaParada;
 import br.com.busco.viagem.app.cmd.RegistrarSaidaParada;
 import br.com.busco.viagem.domain.Carteirinha;
+import br.com.busco.viagem.domain.Endereco;
 import br.com.busco.viagem.domain.Passageiro;
 import br.com.busco.viagem.domain.PeriodoViagem;
+import br.com.busco.viagem.domain.Rota;
 import br.com.busco.viagem.domain.RotaRepository;
 import br.com.busco.viagem.domain.Status;
 import br.com.busco.viagem.domain.Viagem;
@@ -19,6 +24,7 @@ import br.com.busco.viagem.domain.ViagemRepository;
 import br.com.busco.viagem.infra.exceptions.runtime.ConflictException;
 import br.com.busco.viagem.infra.exceptions.runtime.ForbiddenException;
 import br.com.busco.viagem.infra.exceptions.runtime.ObjectNotFoundException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import br.com.busco.viagem.sk.ids.RotaId;
 import br.com.busco.viagem.sk.ids.ViagemId;
 import jakarta.persistence.EntityNotFoundException;
@@ -50,6 +56,7 @@ public class ViagemService {
     private final ViagemRepository repository;
     private final RotaRepository rotaRepository;
     private final RotaGateway rotaGateway;
+    private final ObjectMapper objectMapper;
 
     @NonNull
     public ViagemId handle(@NonNull @Valid CriarViagem cmd) {
@@ -84,13 +91,15 @@ public class ViagemService {
     @NonNull
     public ViagemId handle(@NonNull @Valid IniciarViagem cmd) {
         Viagem viagem = buscarPorId(ViagemId.fromString(cmd.getId().toString()));
+        LocalDateTime horarioPartida = cmd.getHorarioPartida() != null
+                ? cmd.getHorarioPartida() : LocalDateTime.now();
 
         var paradasPrevistas = rotaGateway.calcularParadasComHorarios(
                 viagem.getRota(),
-                cmd.getHorarioPartida().toLocalTime()
+                horarioPartida.toLocalTime()
         );
 
-        viagem.iniciar(cmd.getHorarioPartida(), paradasPrevistas);
+        viagem.iniciar(horarioPartida, paradasPrevistas);
         return repository.save(viagem).getId();
     }
 
@@ -125,7 +134,9 @@ public class ViagemService {
     @NonNull
     public ViagemId handle(@NonNull @Valid FinalizarViagem cmd) {
         Viagem viagem = buscarPorId(ViagemId.fromString(cmd.getId().toString()));
-        viagem.finalizar(cmd.getHorarioFinalizacao());
+        LocalDateTime horario = cmd.getHorarioFinalizacao() != null
+                ? cmd.getHorarioFinalizacao() : LocalDateTime.now();
+        viagem.finalizar(horario);
         return repository.save(viagem).getId();
     }
 
@@ -228,6 +239,82 @@ public class ViagemService {
                     .orElseThrow(() -> new ObjectNotFoundException(
                             format("Aluno '%s' não encontrado.", codigo)));
         }
+    }
+
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public ViagemId handle(@NonNull @Valid AtualizarViagem cmd) {
+        Viagem viagem = buscarPorId(ViagemId.fromString(cmd.getId().toString()));
+
+        RotaId novaRota = cmd.getRota() == null ? null : RotaId.fromString(cmd.getRota().toString());
+        if (novaRota != null) {
+            rotaRepository.findById(novaRota).orElseThrow(() -> new EntityNotFoundException(
+                    format("Rota não encontrada com o ID: %s", cmd.getRota())));
+        }
+        List<Passageiro> novosPassageiros = cmd.getAlunos() == null ? null
+                : cmd.getAlunos().stream().map(Passageiro::comId).toList();
+
+        UUID motorista = cmd.getMotorista() != null ? cmd.getMotorista() : viagem.getMotoristaId();
+        UUID monitor = cmd.getMonitor() != null ? cmd.getMonitor() : viagem.getMonitorId();
+        UUID veiculo = cmd.getVeiculo() != null ? cmd.getVeiculo() : viagem.getVeiculoId();
+        LocalDateTime data = cmd.getData() != null ? cmd.getData() : viagem.getData();
+        validarOcupacao(viagem.getId(), data, motorista, monitor, veiculo);
+
+        viagem.atualizar(cmd.getData(), novaRota, cmd.getMotorista(), cmd.getVeiculo(),
+                cmd.getMonitor(), novosPassageiros);
+        return repository.save(viagem).getId();
+    }
+
+    private void validarOcupacao(ViagemId viagemId, LocalDateTime data, UUID motorista,
+                                 UUID monitor, UUID veiculo) {
+        for (Viagem outra : repository.findByData(data)) {
+            if (outra.getId().equals(viagemId) || outra.getStatus() == Status.CANCELADA) {
+                continue;
+            }
+            if (motorista != null && motorista.equals(outra.getMotoristaId())) {
+                throw new ConflictException("Motorista ocupado nessa data");
+            }
+            if (monitor != null && monitor.equals(outra.getMonitorId())) {
+                throw new ConflictException("Monitor ocupado nessa data");
+            }
+            if (veiculo != null && veiculo.equals(outra.getVeiculoId())) {
+                throw new ConflictException("Veículo ocupado nessa data");
+            }
+        }
+    }
+
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public RotaId handle(@NonNull @Valid CriarRota cmd) throws Exception {
+        Rota rota = Rota.builder()
+                .numeroRota(cmd.getNumeroRota())
+                .nome(cmd.getNome())
+                .enderecos(cmd.getEnderecos() != null ? cmd.getEnderecos() : List.of())
+                .tempoEstimado(cmd.getTempoEstimado())
+                .distancia(cmd.getDistancia())
+                .rotasJson(cmd.getRotas() != null ? objectMapper.writeValueAsString(cmd.getRotas()) : null)
+                .build();
+        return rotaRepository.save(rota).getId();
+    }
+
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public RotaId handle(@NonNull @Valid AtualizarRota cmd) {
+        Rota rota = rotaRepository.findById(RotaId.fromString(cmd.getId().toString()))
+                .orElseThrow(() -> new EntityNotFoundException(
+                        format("Not found any Business with code %s.", cmd.getId())));
+        List<Endereco> enderecos = cmd.getEnderecos() != null
+                ? new java.util.ArrayList<>(cmd.getEnderecos()) : null;
+        rota.atualizar(cmd.getNumeroRota(), cmd.getNome(), enderecos,
+                cmd.getTempoEstimado(), cmd.getDistancia(), null);
+        return rotaRepository.save(rota).getId();
+    }
+
+    @NonNull
+    @Transactional(readOnly = true)
+    public Rota buscarRotaPorId(@NonNull RotaId id) {
+        return rotaRepository.findById(requireNonNull(id))
+                .orElseThrow(() -> new EntityNotFoundException(format("Not found any Business with code %s.", id.toUUID())));
     }
 
     @NonNull

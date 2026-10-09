@@ -3,8 +3,13 @@ package br.com.busco.viagem.domain;
 import br.com.busco.viagem.domain.events.AlunoEmbarcado;
 import br.com.busco.viagem.domain.events.AtrasoCritico;
 import br.com.busco.viagem.domain.events.FaltaSemJustificativa;
+import br.com.busco.viagem.domain.events.HorarioAlterado;
 import br.com.busco.viagem.domain.events.MonitorAtribuido;
 import br.com.busco.viagem.domain.events.MonitorRemovido;
+import br.com.busco.viagem.domain.events.MotoristaAtribuido;
+import br.com.busco.viagem.domain.events.MotoristaRemovido;
+import br.com.busco.viagem.domain.events.RotaAlterada;
+import br.com.busco.viagem.domain.events.VeiculoAlterado;
 import br.com.busco.viagem.domain.events.ChegadaParada;
 import br.com.busco.viagem.domain.events.ParadaForaDeSequenciaEvent;
 import br.com.busco.viagem.domain.events.ParadasPendentes;
@@ -152,13 +157,14 @@ public class Viagem extends AbstractAggregateRoot<ViagemId> {
             this.periodoViagem = periodoViagem.withInicioReal(horarioReal);
         }
 
-        this.paradas = paradasPrevistas.stream()
+        this.paradas.clear();
+        this.paradas.addAll(paradasPrevistas.stream()
                 .map(pp -> ParadaExecucao.builder()
                         .viagem(this)
                         .ordem(pp.getOrdem())
                         .horarioPrevisto(pp.getHorarioPrevisto())
                         .build())
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
 
         registerEvent(ViagemIniciada.from(this, horarioReal));
     }
@@ -206,6 +212,67 @@ public class Viagem extends AbstractAggregateRoot<ViagemId> {
         }
         this.monitorId = novoMonitorId;
         registerEvent(MonitorAtribuido.of(getId()));
+    }
+
+    /**
+     * Atualização parcial por campo (espelha {@code ViagemForm.update} do
+     * monólito): troca de horário/rota/equipe dentro da janela de notificação
+     * (próximos 7 dias) publica o evento correspondente.
+     */
+    public void atualizar(LocalDateTime novaData, RotaId novaRota, UUID novoMotoristaId,
+                         UUID novoVeiculoId, UUID novoMonitorId, List<Passageiro> novosPassageiros) {
+        if (novaData != null && !novaData.equals(this.data)) {
+            this.data = novaData;
+            if (dentroDaJanelaDeNotificacao(novaData)) {
+                registerEvent(HorarioAlterado.of(getId()));
+            }
+        }
+        boolean naJanela = dentroDaJanelaDeNotificacao(this.data);
+
+        if (novosPassageiros != null) {
+            this.passageiros = new ArrayList<>(novosPassageiros);
+        }
+        if (novaRota != null && !novaRota.equals(this.rota)) {
+            if (naJanela) {
+                registerEvent(RotaAlterada.of(getId()));
+            }
+            this.rota = novaRota;
+        }
+        if (novoMotoristaId != null && !novoMotoristaId.equals(this.motoristaId)) {
+            if (naJanela) {
+                registerEvent(MotoristaRemovido.of(getId()));
+            }
+            this.motoristaId = novoMotoristaId;
+            if (naJanela) {
+                registerEvent(MotoristaAtribuido.of(getId()));
+            }
+        }
+        if (novoVeiculoId != null && !novoVeiculoId.equals(this.veiculoId)) {
+            if (naJanela) {
+                registerEvent(VeiculoAlterado.of(getId()));
+            }
+            this.veiculoId = novoVeiculoId;
+        }
+        if (novoMonitorId != null && !novoMonitorId.equals(this.monitorId)) {
+            if (naJanela) {
+                registerEvent(MonitorRemovido.of(getId()));
+            }
+            this.monitorId = novoMonitorId;
+            if (naJanela) {
+                registerEvent(MonitorAtribuido.of(getId()));
+            }
+        }
+    }
+
+    /** Janela de notificação: data dentro dos próximos 7 dias (monólito). */
+    static boolean dentroDaJanelaDeNotificacao(LocalDateTime data) {
+        if (data == null) {
+            return false;
+        }
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime limite = agora.plusDays(7);
+        return (data.isEqual(agora) || data.isAfter(agora))
+                && (data.isEqual(limite) || data.isBefore(limite));
     }
 
     public void cancelar() {

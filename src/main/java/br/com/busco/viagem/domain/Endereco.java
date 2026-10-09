@@ -2,6 +2,8 @@ package br.com.busco.viagem.domain;
 
 import br.com.busco.viagem.sk.ddd.ValueObject;
 import jakarta.persistence.Embeddable;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -29,8 +31,16 @@ public class Endereco implements ValueObject {
     private String latitude;
     private String longitude;
 
-    public Endereco(String logradouro, Integer numero, String complemento, String bairro,
-                    String cidade, String estado, String cep, String latitude, String longitude) {
+    @JsonCreator
+    public Endereco(@JsonProperty("logradouro") String logradouro,
+                    @JsonProperty("numero") Integer numero,
+                    @JsonProperty("complemento") String complemento,
+                    @JsonProperty("bairro") String bairro,
+                    @JsonProperty("cidade") String cidade,
+                    @JsonProperty("estado") String estado,
+                    @JsonProperty("cep") String cep,
+                    @JsonProperty("latitude") String latitude,
+                    @JsonProperty("longitude") String longitude) {
         this.logradouro = logradouro;
         this.numero = numero;
         this.complemento = complemento;

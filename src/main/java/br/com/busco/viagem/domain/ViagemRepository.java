@@ -19,4 +19,6 @@ public interface ViagemRepository {
     List<Viagem> findViagensPlanejadasNoIntervalo(LocalDateTime inicio, LocalDateTime fim);
 
     List<Viagem> findByMonitorIdAndStatusNot(UUID monitorId, Status status);
+
+    List<Viagem> findByData(LocalDateTime data);
 }
