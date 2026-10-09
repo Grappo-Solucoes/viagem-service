@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -223,9 +224,8 @@ public class ViagemController {
      * Conceitos fora do core (outros contextos): ausência, métrica e
      * ocorrência não existem aqui — 404 em vez do 405 padrão.
      */
-    @PostMapping({"/ausencia", "/metrica", "/ocorrencia"})
-    @PatchMapping({"/ausencia", "/metrica", "/ocorrencia"})
-    @PutMapping({"/ausencia", "/metrica", "/ocorrencia"})
+    @RequestMapping(path = {"/ausencia", "/metrica", "/ocorrencia"},
+            method = {RequestMethod.POST, RequestMethod.PATCH, RequestMethod.PUT})
     public ResponseEntity<Void> foraDoCore() {
         return ResponseEntity.notFound().build();
     }
